@@ -8,43 +8,45 @@ useful commands
 
 
 
-1. Set VLSM
+1. Set and compute VLSM base on base ip address and needed hosts per VLAN
 2. Set devices in Lab
 3. add straight-through cables
 4. Rename devices first (hostname switch, routers etc)
 
 
 
+PC hosts config:
+
+1. Set default gateway to last usable addr of the VLSM config per vlan
+2. Set the ip address to 1st usable addr of the VLSM config per vlan
+3. Set the subnet mask based on the VLSM config per vlan
+
+
+
 SW1 config:
 
-1. Set interface connected to SW2 as trunk, set allowed vlans 10,20,30
-2. Set interface connected on each host as access, then set vlans via sw access vlan #
-3. check status and config using useful commands
+1. Create vlans, vlan 10, vlan 20, vlan 30 etc and rename if needed
+2. Set interface connected to SW2 as trunk, set allowed vlans 10,20,30
+3. Set interface connected on each host as access, then set vlans via sw access vlan #
+4. check status and config using useful commands
 
 
 
 SW2 config
 
-1. Set interface connected to SW1 as trunk, set allowed vlans 10,20,30
-2. Set SVI for each vlan (interface vlan #, ip address x.x.x.x)
-3. Set the ip address of the interface connected to the router P2P (1st usable addr)
-4. Set the gateway of last resort as the router's ip address connected to SW2 interface (last useable addr)
+1. run ip routing - this enables the switch to become layer 3
+2. Create vlans, vlan 10, vlan 20, vlan 30 etc and rename if needed
+3. Set interface connected to SW1 as trunk, set allowed vlans 10,20,30
+4. Set SVI for each vlan (interface vlan #, ip address x.x.x.x)
+5. enter the interface connected to router, run no switchport
+6. Set the ip address of the interface connected to the router P2P (1st usable addr)
+7. Set the gateway of last resort as the router's ip address connected to SW2 interface (last useable addr)
 
 
 
 R1 config:
 
 1. Set the ip address of the interface connected to the switch P2P (last usable addr)
-2. Set the gateway of last resort as the SW2 ip address connected to this router interface (1st useable addr)
-
-
-
-1. 
-2. Set SW1 (layer 2) interface connected to SW set sw mode access, sw access vlan #
-3. Once trunk is uplinked to SW2, set the allowed vlans on that trunk via sw trunk allowed vlan #
-4. Move to SW2 CLI, set SVI's for each vlan via interface vlan #, then set the ip address (default gateway per vlan) and subnet mask
-5. Set the interface connected from SW1 to SW2 (layer 3) as sw tr enc dot1q, sw mode trunk, then set the allowed vlans sw trunk allowed vlan #
-6. &nbsp;set the P2P ip address of SW2 going to R1
-7. once set, exit and set gateway of last resort via ip route 0.0.0.0 0.0.0.0 ip\_address\_of\_r1
-8. move to R1, set the ip address interface connected to SW2, remember to do no shut as routers are down by default
-9. set gateway of last resort via ip route 0.0.0.0 0.0.0.0 ip\_address\_of\_sw2 so R1 can reach other vlans
+2. Add static routes to VLAN networks via SW2
+3. Set the gateway of last resort to internet cloud
+4. 
