@@ -1,187 +1,170 @@
-# CCNA Networking Labs
+# CCNA Networking Lab Portfolio
 
-This repository contains my **Cisco CCNA Packet Tracer labs** based on the learning path from **Jeremy's IT Lab CCNA course**.
+A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA practice in switching, routing, redundancy, and IPv6.
 
-Instead of creating completely separate labs for each topic, the **network topology evolves as new technologies are introduced**. Each lab builds on the previous one, gradually transforming the network into a more complex environment.
+![Sample lab topology](sample-lab.png)
 
----
+## Overview
 
-# Lab Design Workflow
+This repository serves as my **networking portfolio** while I work through my CCNA course and build practical configuration skills in Packet Tracer.
 
-The labs follow a **structured configuration workflow**, similar to how a network would be deployed in real environments.  
-Each step builds on the previous configuration and introduces a new networking concept.
+Instead of treating each topic as a completely separate project, I use an **evolving topology** that becomes more advanced over time. That approach helps me practice how networks are built, expanded, verified, and troubleshot.
 
----
+## What This Repo Shows
 
-## Setup Before Configuration
+- VLAN creation and segmentation
+- VTP and trunking between switches
+- Inter-VLAN routing with SVIs and Layer 3 switching
+- RSTP, PortFast, BPDU Guard, and Root Guard
+- EtherChannel for redundancy and bandwidth
+- OSPF routing and failover path behavior
+- FHRP for resilient default gateways
+- IPv4 and IPv6 dual-stack addressing
+- Static routing and WAN edge connectivity
 
-Before starting device configuration, plan the IP scheme with **VLSM (Variable Length Subnet Masking)**.  
-This helps assign subnet sizes based on host requirements instead of wasting address space.
+## Lab Files
 
-Example approach:
+These Packet Tracer labs show the progression of the topology and the topics covered:
 
-- Use larger subnets for user VLANs that need more hosts
-- Use smaller subnets for management or point-to-point links
-- Document each subnet before assigning addresses to devices
+| Lab File | Main Focus |
+|---|---|
+| `VTP.pkt` | VLAN propagation and switch domain setup |
+| `VLAN - L2 Switch (ROAS) + Subinterfaces.pkt` | Router-on-a-stick and inter-VLAN routing |
+| `VLAN - L3 Switch (P2P) + SVI.pkt` | Layer 3 switching with SVIs and routed links |
+| `RSTP with portfast, bpduguard, root guard.pkt` | Spanning-tree protection features |
+| `Etherchannel.pkt` | Aggregated uplinks and redundancy |
+| `FHRP (Active, Standby).pkt` | Default gateway redundancy |
+| `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
+| `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 
-### Example IP Structure
+## Topology Snapshot
 
-To keep the labs consistent, use a simple addressing convention inside each subnet:
+The current lab design includes:
 
-- `.1` for important hosts or test PCs
-- `.254` for the default gateway / SVI / router interface
-- Low addresses like `.2`, `.3`, `.4` for additional hosts, switches, or management IPs
+- Three user VLANs: HR, Sales, and IT
+- Two distribution / multilayer switches acting as primary and backup gateways
+- Redundant uplinks between access and distribution layers
+- Dual upstream routers connected to an ISP
+- IPv4 and IPv6 addressing throughout the environment
 
-Example:
-
-- VLAN 10: `192.168.10.0/24`
-- Host PC: `192.168.10.1`
-- Another host: `192.168.10.2`
-- Gateway: `192.168.10.254`
-
-This makes troubleshooting easier because host and gateway addresses are predictable across all labs.
-
-## VLANs and Subnets Used in This Lab
-
-The topology uses three user VLANs and two point-to-point WAN subnets.
+## Addressing Plan
 
 ### VLAN Networks
 
-- **VLAN 10 - HR**
-  - Subnet: `192.168.10.0/24`
-  - Default gateway: `192.168.10.254`
-  - Example host: `192.168.10.1`
+| VLAN | Department | IPv4 Subnet | IPv4 Gateway | IPv6 Subnet | IPv6 Gateway |
+|---|---|---|---|---|---|
+| 10 | HR | `192.168.10.0/24` | `192.168.10.254` | `2001:DB8:10::/64` | `2001:DB8:10::254` |
+| 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::254` |
+| 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::254` |
 
-- **VLAN 20 - Sales**
-  - Subnet: `192.168.20.0/24`
-  - Default gateway: `192.168.20.254`
-  - Example host: `192.168.20.1`
+### Example End-Host Addressing
 
-- **VLAN 30 - IT**
-  - Subnet: `192.168.30.0/24`
-  - Default gateway: `192.168.30.254`
-  - Example host: `192.168.30.1`
+| VLAN | Example IPv4 Host | Example IPv6 Host |
+|---|---|---|
+| 10 | `192.168.10.1` | `2001:DB8:10::1` |
+| 20 | `192.168.20.1` | `2001:DB8:20::1` |
+| 30 | `192.168.30.1` | `2001:DB8:30::1` |
 
-### FHRP Gateway Addresses
+### FHRP / Gateway Pattern
 
-The lab also uses FHRP for gateway redundancy between the multilayer switches.
+The multilayer switches follow a predictable addressing structure to make verification and troubleshooting easier.
 
-- VLAN 10 virtual gateway: `192.168.10.254`
-- VLAN 20 virtual gateway: `192.168.20.254`
-- VLAN 30 virtual gateway: `192.168.30.254`
+| Role | IPv4 Pattern | IPv6 Pattern |
+|---|---|---|
+| Main multilayer switch SVI | `192.168.x.252` | `2001:DB8:x::252` |
+| Backup multilayer switch SVI | `192.168.x.253` | `2001:DB8:x::253` |
+| Virtual default gateway | `192.168.x.254` | `2001:DB8:x::254` |
 
-Example addressing pattern shown in the topology:
+Replace `x` with the VLAN number such as `10`, `20`, or `30`.
 
-- SW3 main SVI: `192.168.x.252`
-- SW3 backup SVI: `192.168.x.253`
-- Router or FHRP virtual gateway: `192.168.x.254`
+### Point-to-Point WAN Links
 
-Replace `x` with the VLAN number, such as `10`, `20`, or `30`.
+| Link | IPv4 Subnet | Router Address | ISP Address | IPv6 Subnet | Router IPv6 | ISP IPv6 |
+|---|---|---|---|---|---|---|
+| R3 to ISP | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
+| R4 to ISP | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
 
-### Point-to-Point Routed Links
+## Configuration Workflow
 
-- **R3 to ISP**
-  - Subnet: `203.0.113.0/30`
-  - R3: `203.0.113.1`
-  - ISP: `203.0.113.2`
+This is the general sequence I follow as the topology evolves:
 
-- **R4 to ISP**
-  - Subnet: `203.0.113.4/30`
-  - R4: `203.0.113.5`
-  - ISP: `203.0.113.6`
+1. Configure hostnames on routers, switches, and hosts.
+2. Assign IPv4 and IPv6 addressing to end devices.
+3. Create VLANs and configure VTP where required.
+4. Build trunk links between switches.
+5. Configure routed ports and WAN point-to-point links.
+6. Enable RSTP and harden the edge with PortFast and BPDU Guard.
+7. Create SVIs for inter-VLAN routing.
+8. Verify VLAN reachability and gateway connectivity.
+9. Configure router interfaces and upstream connectivity.
+10. Deploy OSPF and validate adjacency plus route exchange.
+11. Add EtherChannel for redundancy and higher throughput.
+12. Configure FHRP for resilient default gateway services.
+13. Test failover, path selection, and end-to-end connectivity.
 
----
+## Design Notes
+- The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
+- I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read.
+ I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
+- I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
+- Redundancy features such as **FHRP, EtherChannel, and spanning-tree protections** are included to reflect real design patterns.
 
-## Lab Configuration Steps
+### Example VLSM Workflow
 
-1. **Configure Hostnames on all devices**
+The same structured approach is used when building subnets for the lab. In this topology, the user VLANs are intentionally kept as `/24` networks for simplicity and room to grow, while WAN point-to-point links use `/30` subnets:
 
-   - Routers
-   - Switches
-   - Hosts
+```text
+HR VLAN 10
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.10.0/24
+Prefix: /24
+Usable range: 192.168.10.1 - 192.168.10.254
+Broadcast address: 192.168.10.255
+Gateway: 192.168.10.254
 
-2. **Configure IP addressing on end hosts**
+Sales VLAN 20
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.20.0/24
+Prefix: /24
+Usable range: 192.168.20.1 - 192.168.20.254
+Broadcast address: 192.168.20.255
+Gateway: 192.168.20.254
 
-   - Assign IP address
-   - Assign subnet mask
-   - Configure default gateway
+IT VLAN 30
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.30.0/24
+Prefix: /24
+Usable range: 192.168.30.1 - 192.168.30.254
+Broadcast address: 192.168.30.255
+Gateway: 192.168.30.254
 
-3. **Configure VLANs and VTP**
+R3-ISP P2P
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 203.0.113.0/30
+Prefix: /30
+Usable range: 203.0.113.1 - 203.0.113.2
+Broadcast address: 203.0.113.3
 
-   - Create VLANs **10, 20, 30**
-   - Configure **VTP between Switches**
+R4-ISP P2P
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 203.0.113.4/30
+Prefix: /30
+Usable range: 203.0.113.5 - 203.0.113.6
+Broadcast address: 203.0.113.7
+```
 
-4. **Configure Trunk Links**
+## Next Steps
 
-   - Configure trunk ports between:
-     - SW1
-     - SW2
-     - SW3
+As this portfolio grows, I plan to add:
 
-5. **Configure Routed Ports**
-
-   - Configure **point-to-point routed link between:**
-     - SW3 (main) and R3
-     - SW3 (backup) and R4
-     - R3 and ISP
-     - R4 and ISP
-
-6. **Configure Spanning Tree (RSTP)**
-
-   - Enable **RSTP**
-   - Configure **root bridge**
-
-7. **Configure PortFast and BPDU Guard**
-
-   - Enable **PortFast on access ports**
-   - Enable **BPDU Guard for edge protection**
-
-8. **Configure SVIs**
-
-   - Create **SVIs on SW3**
-   - Provide **inter-VLAN routing**
-
-9. **Verify VLAN Connectivity**
-
-   - Test **ping between VLANs**
-   - Verify **hosts reach their gateways**
-
-10. **Configure Router Interfaces**
-
-    - Configure IP addressing on router interfaces
-
-11. **Configure OSPF**
-
-    - Configure OSPF on:
-      - Routers
-      - SW3 (Layer 3 switch)
-    - Configure router id's, loopbacks, passive-interfaces
-    - Enable via network command (wildcard mask) for (SVIs) and per interface 
-
-12. **Verify OSPF Adjacency**
-
-    - Verify **OSPF neighbors**
-    - Verify **route exchange**
-
-13. **Verify End-to-End Connectivity**
-
-    - Routers reach VLAN networks
-    - End hosts reach routers
-    - SVIs reachable from routers
-
-14. **Configure EtherChannel**
-
-    - Configure **EtherChannel between SW1 and SW2 to SW3**
-    - Increase bandwidth and redundancy
-
-15. **Configure FHRP**
-
-    - Configure **First Hop Redundancy Protocol**
-    - Provide **default gateway redundancy for VLANs**
+- More annotated screenshots
+- Per-lab notes and verification outputs
+- Troubleshooting scenarios and recovery steps
+- Additional routing, security, and services labs as I progress to my CCNA lectures
 
 ---
-
-This lab will continue to grow as I progress to Jeremy's IT Labs CCNA Lectures.
-
-**Sample Lab**
-![Sample lab image](sample-lab.png)
