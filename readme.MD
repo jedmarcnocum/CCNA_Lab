@@ -21,6 +21,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - FHRP for resilient default gateways
 - IPv4 and IPv6 dual-stack addressing
 - Static routing and WAN edge connectivity
+- Standard ACL policy enforcement for segmented access control
 
 ## Lab Files
 
@@ -36,6 +37,56 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `FHRP (Active, Standby).pkt` | Default gateway redundancy |
 | `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
+
+## Lab Exercise: Configure Standard ACLs
+
+This exercise uses the same addressing plan already defined in this repository.
+
+### Objective
+
+Allow only the **HR VLAN (192.168.10.0/24)** to access a protected internal management endpoint in **VLAN 30 (IT)** while denying source traffic from Sales and other user VLANs.
+
+### Scenario
+
+- Protected destination host: `192.168.30.10` (example server in IT VLAN)
+- Allowed source subnet: `192.168.10.0/24` (HR)
+- Blocked source subnet: `192.168.20.0/24` (Sales)
+- Device for ACL placement: multilayer switch SVI for VLAN 30, applied **outbound** (closest to destination)
+
+### Configuration Tasks
+
+1. Create a numbered standard ACL that permits HR and denies all other sources.
+2. Apply the ACL to the VLAN 30 SVI in the outbound direction.
+3. Save configuration and verify ACL hit counters.
+4. Validate results with pings from HR and Sales test hosts to `192.168.30.10`.
+
+### Example Cisco IOS Configuration
+
+```cisco
+! On the multilayer switch performing inter-VLAN routing
+conf t
+access-list 10 permit 192.168.10.0 0.0.0.255
+access-list 10 deny any
+!
+interface vlan 30
+ ip access-group 10 out
+end
+wr
+```
+
+### Verification Commands
+
+```cisco
+show access-lists
+show ip interface vlan 30
+show run | section access-list
+```
+
+### Expected Results
+
+- HR host (for example `192.168.10.1`) can reach `192.168.30.10`.
+- Sales host (for example `192.168.20.1`) is denied access to `192.168.30.10`.
+- ACL counters increment on both permit and deny statements after testing.
 
 ## Topology Snapshot
 
@@ -100,7 +151,8 @@ This is the general sequence I follow as the topology evolves:
 10. Deploy OSPF and validate adjacency plus route exchange.
 11. Add EtherChannel for redundancy and higher throughput.
 12. Configure FHRP for resilient default gateway services.
-13. Test failover, path selection, and end-to-end connectivity.
+13. Apply ACL policy controls and validate source-based filtering behavior.
+14. Test failover, path selection, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
