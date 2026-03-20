@@ -18,7 +18,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - RSTP, PortFast, BPDU Guard, and Root Guard
 - EtherChannel for redundancy and bandwidth
 - OSPF routing and failover path behavior
-- FHRP for resilient default gateways
+- FHRP for resilient IPv4 default gateways
 - IPv4 and IPv6 dual-stack addressing
 - Static routing and WAN edge connectivity
 - Standard ACL policy enforcement for segmented access control
@@ -34,7 +34,7 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `VLAN - L3 Switch (P2P) + SVI.pkt` | Layer 3 switching with SVIs and routed links |
 | `RSTP with portfast, bpduguard, root guard.pkt` | Spanning-tree protection features |
 | `Etherchannel.pkt` | Aggregated uplinks and redundancy |
-| `FHRP (Active, Standby).pkt` | Default gateway redundancy |
+| `FHRP (Active, Standby).pkt` | IPv4 default gateway redundancy |
 | `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 
@@ -102,11 +102,11 @@ The current lab design includes:
 
 ### VLAN Networks
 
-| VLAN | Department | IPv4 Subnet | IPv4 Gateway | IPv6 Subnet | IPv6 Gateway |
+| VLAN | Department | IPv4 Subnet | IPv4 Gateway | IPv6 Subnet | IPv6 Router Addressing |
 |---|---|---|---|---|---|
-| 10 | HR | `192.168.10.0/24` | `192.168.10.254` | `2001:DB8:10::/64` | `2001:DB8:10::254` |
-| 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::254` |
-| 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::254` |
+| 10 | HR | `192.168.10.0/24` | `192.168.10.254` | `2001:DB8:10::/64` | `2001:DB8:10::252` (DSW3-main), `2001:DB8:10::253` (DSW3-backup) |
+| 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::252` (DSW3-main), `2001:DB8:20::253` (DSW3-backup) |
+| 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::252` (DSW3-main), `2001:DB8:30::253` (DSW3-backup) |
 
 ### Example End-Host Addressing
 
@@ -120,11 +120,13 @@ The current lab design includes:
 
 The multilayer switches follow a predictable addressing structure to make verification and troubleshooting easier.
 
+For this Packet Tracer lab, FHRP is used for IPv4 only. IPv6 does not use a virtual gateway address here because IPv6 FHRP is not working reliably in Packet Tracer, so the hosts reference the physical SVI addresses on the multilayer switches instead.
+
 | Role | IPv4 Pattern | IPv6 Pattern |
 |---|---|---|
 | Main multilayer switch SVI | `192.168.x.252` | `2001:DB8:x::252` |
 | Backup multilayer switch SVI | `192.168.x.253` | `2001:DB8:x::253` |
-| Virtual default gateway | `192.168.x.254` | `2001:DB8:x::254` |
+| Virtual default gateway | `192.168.x.254` | Not used in this Packet Tracer IPv6 lab |
 
 Replace `x` with the VLAN number such as `10`, `20`, or `30`.
 
@@ -150,15 +152,15 @@ This is the general sequence I follow as the topology evolves:
 9. Configure router interfaces and upstream connectivity.
 10. Deploy OSPF and validate adjacency plus route exchange.
 11. Add EtherChannel for redundancy and higher throughput.
-12. Configure FHRP for resilient default gateway services.
+12. Configure FHRP for resilient IPv4 default gateway services.
 13. Apply ACL policy controls and validate source-based filtering behavior.
 14. Test failover, path selection, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
-- I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read.
- I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
+- I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read. I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
+- In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the physical DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
 - Redundancy features such as **FHRP, EtherChannel, and spanning-tree protections** are included to reflect real design patterns.
 
 ### Example VLSM Workflow
