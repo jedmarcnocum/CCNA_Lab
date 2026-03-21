@@ -4,6 +4,22 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 
 ![Sample lab topology](sample-lab.png)
 
+## Table of Contents
+
+- [Overview](#overview)
+- [What This Repo Shows](#what-this-repo-shows)
+- [Lab Files](#lab-files)
+- [Topology Snapshot](#topology-snapshot)
+- [Addressing Plan](#addressing-plan)
+- [VTP Documentation](#vtp-documentation)
+- [RSTP Documentation](#rstp-documentation)
+- [EtherChannel Documentation](#etherchannel-documentation)
+- [OSPF Documentation](#ospf-documentation)
+- [Extended ACL Documentation](#extended-acl-documentation)
+- [Configuration Workflow](#configuration-workflow)
+- [Design Notes](#design-notes)
+- [Next Steps](#next-steps)
+
 ## Overview
 
 This repository serves as my **networking portfolio** while I work through my CCNA course and build practical configuration skills in Packet Tracer.
@@ -37,7 +53,7 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `FHRP (Active, Standby).pkt` | IPv4 default gateway redundancy |
 | `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
-| `extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
+| `extended ACL.pkt` | Latest lab file: per-VLAN extended ACLs for service-based access control |
 
 ## Topology Snapshot
 
@@ -471,6 +487,7 @@ As this portfolio grows, I plan to add:
 - More screenshots
 - Per-lab notes and verification outputs
 - Troubleshooting scenarios and recovery steps
-- Additional routing, security, and services labs as I progress to my CCNA lectures
+- Additional routing, security, automation/scripting and services labs as I progress to my CCNA lectures
+- Add a zip file of the latest lab file after PR merge (GitHub actions)
 
 ---
