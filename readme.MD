@@ -59,7 +59,7 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 
 The current lab design includes:
 
-- Three user VLANs: HR, Sales, and IT
+- Four VLANs: HR, Sales, IT, and Services
 - Two distribution / multilayer switches acting as primary and backup gateways
 - An EtherChannel bundle between `DSW3-MAIN` and `DSW3-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
@@ -75,6 +75,7 @@ The current lab design includes:
 | 10 | HR | `192.168.10.0/24` | `192.168.10.254` | `2001:DB8:10::/64` | `2001:DB8:10::252` (DSW3-main), `2001:DB8:10::253` (DSW3-backup) |
 | 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::252` (DSW3-main), `2001:DB8:20::253` (DSW3-backup) |
 | 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::252` (DSW3-main), `2001:DB8:30::253` (DSW3-backup) |
+| 40 | Services | `192.168.40.0/24` | `192.168.40.254` | `2001:DB8:40::/64` | `2001:DB8:40::252` (DSW3-main), `2001:DB8:40::253` (DSW3-backup) |
 
 ### Example End-Host Addressing
 
@@ -83,6 +84,7 @@ The current lab design includes:
 | 10 | `192.168.10.1` | `2001:DB8:10::1` |
 | 20 | `192.168.20.1` | `2001:DB8:20::1` |
 | 30 | `192.168.30.1` | `2001:DB8:30::1` |
+| 40 | `192.168.40.1` | `2001:DB8:40::1` |
 
 ### FHRP / Gateway Pattern
 
@@ -96,7 +98,7 @@ For this Packet Tracer lab, FHRP is used for IPv4 only. IPv6 does not use a virt
 | Backup multilayer switch SVI | `192.168.x.253` | `2001:DB8:x::253` |
 | Virtual default gateway | `192.168.x.254` | Not used in this Packet Tracer IPv6 lab |
 
-Replace `x` with the VLAN number such as `10`, `20`, or `30`.
+Replace `x` with the VLAN number such as `10`, `20`, `30`, or `40`.
 
 ### Point-to-Point WAN Links
 
@@ -321,14 +323,14 @@ This section documents the extended ACL policy applied on both `DSW3-MAIN` and `
 
 ### Policy Summary
 
-- `ACL 110` is applied to `VLAN 10` inbound and allows the `192.168.10.0/24` subnet to use FTP with server `192.168.40.1`.
-- `ACL 120` is applied to `VLAN 20` inbound and blocks HTTP while permitting selected HTTPS and DNS traffic toward server `192.168.40.3`.
+- `ACL 110` is applied to `VLAN 10` inbound and allows the `192.168.10.0/24` subnet to use FTP with server `192.168.40.1` in `VLAN 40`.
+- `ACL 120` is applied to `VLAN 20` inbound and blocks HTTP while permitting selected HTTPS and DNS traffic toward server `192.168.40.3` in `VLAN 40`.
 - The same ACL definitions and interface bindings are configured on both multilayer switches so the policy remains consistent during gateway failover.
 - Because these are extended ACLs placed close to the source, the filtering happens as traffic enters the source VLAN SVI on the multilayer switch.
 
 ### Service Test Setup
 
-- The web server at `192.168.40.3` is also configured as a DNS server.
+- The web server at `192.168.40.3` in `VLAN 40` is also configured as a DNS server.
 - A DNS `A` record for `cisco.com` points to `192.168.40.3`.
 - Hosts in `VLAN 20` use `192.168.40.3` as their DNS server so the lab can test both HTTPS and DNS behavior through `ACL 120`.
 
