@@ -1,8 +1,24 @@
 # CCNA Networking Lab Portfolio
 
-A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA practice in switching, routing, redundancy, and IPv6.
+A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA practice.
 
 ![Sample lab topology](sample-lab.png)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [What This Repo Shows](#what-this-repo-shows)
+- [Lab Files](#lab-files)
+- [Topology Snapshot](#topology-snapshot)
+- [Addressing Plan](#addressing-plan)
+- [VTP Documentation](#vtp-documentation)
+- [RSTP Documentation](#rstp-documentation)
+- [EtherChannel Documentation](#etherchannel-documentation)
+- [OSPF Documentation](#ospf-documentation)
+- [Extended ACL Documentation](#extended-acl-documentation)
+- [Configuration Workflow](#configuration-workflow)
+- [Design Notes](#design-notes)
+- [Next Steps](#next-steps)
 
 ## Overview
 
@@ -18,9 +34,10 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - RSTP, PortFast, BPDU Guard, and Root Guard
 - EtherChannel for redundancy and bandwidth
 - OSPF routing and failover path behavior
-- FHRP for resilient default gateways
+- FHRP for resilient IPv4 default gateways
 - IPv4 and IPv6 dual-stack addressing
 - Static routing and WAN edge connectivity
+- Extended ACL policy enforcement for service-based access control
 
 ## Lab Files
 
@@ -33,9 +50,10 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `VLAN - L3 Switch (P2P) + SVI.pkt` | Layer 3 switching with SVIs and routed links |
 | `RSTP with portfast, bpduguard, root guard.pkt` | Spanning-tree protection features |
 | `Etherchannel.pkt` | Aggregated uplinks and redundancy |
-| `FHRP (Active, Standby).pkt` | Default gateway redundancy |
+| `FHRP (Active, Standby).pkt` | IPv4 default gateway redundancy |
 | `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
+| `extended ACL.pkt` | Latest lab file: per-VLAN extended ACLs for service-based access control |
 
 ## Topology Snapshot
 
@@ -43,6 +61,7 @@ The current lab design includes:
 
 - Three user VLANs: HR, Sales, and IT
 - Two distribution / multilayer switches acting as primary and backup gateways
+- An EtherChannel bundle between `DSW3-MAIN` and `DSW3-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
 - Dual upstream routers connected to an ISP
 - IPv4 and IPv6 addressing throughout the environment
@@ -51,11 +70,11 @@ The current lab design includes:
 
 ### VLAN Networks
 
-| VLAN | Department | IPv4 Subnet | IPv4 Gateway | IPv6 Subnet | IPv6 Gateway |
+| VLAN | Department | IPv4 Subnet | IPv4 Gateway | IPv6 Subnet | IPv6 Router Addressing |
 |---|---|---|---|---|---|
-| 10 | HR | `192.168.10.0/24` | `192.168.10.254` | `2001:DB8:10::/64` | `2001:DB8:10::254` |
-| 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::254` |
-| 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::254` |
+| 10 | HR | `192.168.10.0/24` | `192.168.10.254` | `2001:DB8:10::/64` | `2001:DB8:10::252` (DSW3-main), `2001:DB8:10::253` (DSW3-backup) |
+| 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::252` (DSW3-main), `2001:DB8:20::253` (DSW3-backup) |
+| 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::252` (DSW3-main), `2001:DB8:30::253` (DSW3-backup) |
 
 ### Example End-Host Addressing
 
@@ -69,11 +88,13 @@ The current lab design includes:
 
 The multilayer switches follow a predictable addressing structure to make verification and troubleshooting easier.
 
+For this Packet Tracer lab, FHRP is used for IPv4 only. IPv6 does not use a virtual gateway address here because IPv6 FHRP is not working reliably in Packet Tracer, so the hosts reference the SVI addresses on the multilayer switches instead.
+
 | Role | IPv4 Pattern | IPv6 Pattern |
 |---|---|---|
 | Main multilayer switch SVI | `192.168.x.252` | `2001:DB8:x::252` |
 | Backup multilayer switch SVI | `192.168.x.253` | `2001:DB8:x::253` |
-| Virtual default gateway | `192.168.x.254` | `2001:DB8:x::254` |
+| Virtual default gateway | `192.168.x.254` | Not used in this Packet Tracer IPv6 lab |
 
 Replace `x` with the VLAN number such as `10`, `20`, or `30`.
 
@@ -83,6 +104,305 @@ Replace `x` with the VLAN number such as `10`, `20`, or `30`.
 |---|---|---|---|---|---|---|
 | R3 to ISP | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
 | R4 to ISP | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
+
+## VTP Documentation
+
+This section documents the basic VTP setup used in the switching portion of the lab.
+
+### Design Summary
+
+- The VTP domain is configured as `cisco`.
+- `DSW3-MAIN` is configured as the VTP server for VLAN management.
+- This setup is kept intentionally simple because the lab is also being used to study VLAN provisioning and future automation or scripting workflows.
+
+### Example Configuration
+
+#### DSW3-MAIN
+
+```cisco
+vtp domain cisco
+vtp mode server
+```
+
+#### VTP Clients
+
+```cisco
+vtp domain cisco
+vtp mode client
+```
+
+### Verification Commands
+
+```cisco
+show vtp status
+show vlan brief
+```
+
+## RSTP Documentation
+
+This section documents the Rapid Spanning Tree configuration used to stabilize Layer 2 paths and protect edge ports.
+
+### Design Summary
+
+- Rapid PVST is enabled for fast convergence.
+- `DSW3-MAIN` is configured as the root primary switch for all VLANs.
+- `DSW3-BACKUP` is configured as the root secondary switch for all VLANs.
+- PortFast and BPDU Guard are enabled on edge-facing access ports to speed host connectivity and protect against accidental switch connections.
+- Root Guard is enabled on distribution switch interfaces facing downstream access switches to prevent an unexpected switch from becoming the spanning-tree root.
+
+### Example Configuration
+
+#### DSW3-MAIN
+
+```cisco
+spanning-tree mode rapid-pvst
+spanning-tree vlan 1,10,20,30,40 root primary
+```
+
+#### DSW3-BACKUP
+
+```cisco
+spanning-tree mode rapid-pvst
+spanning-tree vlan 1,10,20,30,40 root secondary
+```
+
+#### Distribution Downlinks to Access Switches
+
+```cisco
+interface <downstream-access-uplink>
+ spanning-tree guard root
+```
+
+#### Access Switch Edge Protection
+
+```cisco
+spanning-tree mode rapid-pvst
+spanning-tree portfast default
+spanning-tree bpduguard default
+```
+
+### Verification Commands
+
+```cisco
+show spanning-tree
+show spanning-tree vlan 10
+show spanning-tree summary
+show spanning-tree inconsistentports
+```
+
+## EtherChannel Documentation
+
+This section documents the EtherChannel link configured between `DSW3-MAIN` and `DSW3-BACKUP`.
+
+### Design Summary
+
+- The direct inter-switch uplinks between `DSW3-MAIN` and `DSW3-BACKUP` are bundled into a single EtherChannel for redundancy and additional bandwidth.
+- This keeps the distribution layer resilient because the logical port-channel remains available if one member link fails.
+- The bundled inter-switch link also simplifies spanning-tree operation by presenting the parallel links as one logical path.
+
+### Intended Behavior
+
+- Traffic between the two multilayer switches can continue flowing even if a single physical member link goes down.
+- The switches treat the port-channel as one logical connection instead of separate parallel trunks.
+- The EtherChannel provides both redundancy and higher aggregate throughput across the distribution pair.
+
+### Verification Commands
+
+```cisco
+show etherchannel summary
+show interfaces trunk
+show spanning-tree
+```
+
+## OSPF Documentation
+
+This section documents the OSPF design used for dynamic routing and failover behavior in the lab.
+
+### Loopback Router IDs
+
+| Device | Loopback Address | OSPF Router ID |
+|---|---|---|
+| `DSW3-MAIN` | `1.1.1.1/32` | `1.1.1.1` |
+| `DSW3-BACKUP` | `2.2.2.2/32` | `2.2.2.2` |
+| `R3` | `3.3.3.3/32` | `3.3.3.3` |
+| `R4` | `4.4.4.4/32` | `4.4.4.4` |
+| `ISP` | `8.8.8.8/32` | `8.8.8.8` |
+
+### OSPF Design Summary
+
+- Each Layer 3 device uses a loopback interface to provide a stable OSPF router ID.
+- OSPF is configured in a single area only: `area 0`.
+- On the multilayer switches, VLAN SVIs are advertised through `network` statements with wildcard masks under the OSPF process.
+- Physical routed interfaces are enabled individually under the interface with `ip ospf 1 area 0`.
+- OSPF is used to advertise internal routed paths and upstream connectivity across the lab.
+- The topology is designed so path preference and failover can be observed when the primary route changes or becomes unavailable.
+
+### Example Loopback and Router ID Configuration
+
+#### DSW3-MAIN
+
+```cisco
+interface loopback0
+ ip address 1.1.1.1 255.255.255.255
+!
+router ospf 1
+ router-id 1.1.1.1
+ network 1.1.1.1 0.0.0.0 area 0
+ network 192.168.10.0 0.0.0.255 area 0
+ network 192.168.20.0 0.0.0.255 area 0
+ network 192.168.30.0 0.0.0.255 area 0
+ network 192.168.40.0 0.0.0.255 area 0
+```
+
+#### DSW3-BACKUP
+
+```cisco
+interface loopback0
+ ip address 2.2.2.2 255.255.255.255
+!
+router ospf 1
+ router-id 2.2.2.2
+ network 2.2.2.2 0.0.0.0 area 0
+ network 192.168.10.0 0.0.0.255 area 0
+ network 192.168.20.0 0.0.0.255 area 0
+ network 192.168.30.0 0.0.0.255 area 0
+ network 192.168.40.0 0.0.0.255 area 0
+```
+
+#### R3
+
+```cisco
+interface loopback0
+ ip address 3.3.3.3 255.255.255.255
+!
+router ospf 1
+ router-id 3.3.3.3
+```
+
+#### R4
+
+```cisco
+interface loopback0
+ ip address 4.4.4.4 255.255.255.255
+!
+router ospf 1
+ router-id 4.4.4.4
+```
+
+#### ISP
+
+```cisco
+interface loopback0
+ ip address 8.8.8.8 255.255.255.255
+!
+router ospf 1
+ router-id 8.8.8.8
+```
+
+### Routed Interface OSPF Enablement
+
+```cisco
+interface <routed-uplink>
+ ip ospf 1 area 0
+```
+
+### Verification Commands
+
+```cisco
+show ip ospf neighbor
+show ip route ospf
+show ip ospf interface brief
+show ip protocols
+```
+
+## Extended ACL Documentation
+
+This section documents the extended ACL policy applied on both `DSW3-MAIN` and `DSW3-BACKUP` in the Packet Tracer lab.
+
+### Policy Summary
+
+- `ACL 110` is applied to `VLAN 10` inbound and allows the `192.168.10.0/24` subnet to use FTP with server `192.168.40.1`.
+- `ACL 120` is applied to `VLAN 20` inbound and blocks HTTP while permitting selected HTTPS and DNS traffic toward server `192.168.40.3`.
+- The same ACL definitions and interface bindings are configured on both multilayer switches so the policy remains consistent during gateway failover.
+- Because these are extended ACLs placed close to the source, the filtering happens as traffic enters the source VLAN SVI on the multilayer switch.
+
+### Service Test Setup
+
+- The web server at `192.168.40.3` is also configured as a DNS server.
+- A DNS `A` record for `cisco.com` points to `192.168.40.3`.
+- Hosts in `VLAN 20` use `192.168.40.3` as their DNS server so the lab can test both HTTPS and DNS behavior through `ACL 120`.
+
+### ACL Configuration on DSW3-MAIN
+
+```cisco
+ip access-list extended 110
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.40.1 eq ftp
+ permit tcp host 192.168.40.1 eq ftp 192.168.10.0 0.0.0.255
+!
+ip access-list extended 120
+ deny tcp any any eq www
+ permit tcp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq 443
+ permit tcp host 192.168.40.3 eq 443 192.168.20.0 0.0.0.255
+ permit udp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq domain
+!
+interface vlan 10
+ ip access-group 110 in
+!
+interface vlan 20
+ ip access-group 120 in
+```
+
+### ACL Configuration on DSW3-BACKUP
+
+```cisco
+ip access-list extended 110
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.40.1 eq ftp
+ permit tcp host 192.168.40.1 eq ftp 192.168.10.0 0.0.0.255
+!
+ip access-list extended 120
+ deny tcp any any eq www
+ permit tcp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq 443
+ permit tcp host 192.168.40.3 eq 443 192.168.20.0 0.0.0.255
+ permit udp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq domain
+!
+interface vlan 10
+ ip access-group 110 in
+!
+interface vlan 20
+ ip access-group 120 in
+```
+
+### Intended Behavior
+
+- Hosts in `VLAN 10` can establish FTP sessions with `192.168.40.1`.
+- Hosts in `VLAN 20` are blocked from HTTP destinations that match the ACL.
+- Hosts in `VLAN 20` can resolve `cisco.com` to `192.168.40.3`, and that DNS traffic is permitted by the ACL.
+- Hosts in `VLAN 20` are permitted to reach `192.168.40.3` on HTTPS after resolving the name or by using the direct IP address.
+
+### Verification Commands
+
+```cisco
+show access-lists
+show run interface vlan 10
+show run interface vlan 20
+show ip interface vlan 10
+show ip interface vlan 20
+show hosts
+```
+
+### Packet Tracer Note
+
+Packet Tracer has a known issue where extended ACLs can remain in the saved configuration but stop filtering correctly after the lab is closed and reopened. In this lab, the workaround is to re-apply the ACL to each VLAN interface after every Packet Tracer restart. The issue is described in this Cisco Community thread: <https://community.cisco.com/t5/switching/packet-tracer-acls-remain-in-config-but-stop-working-after/m-p/5378191#M587005>.
+
+Use the following commands to re-apply the ACL bindings on each multilayer switch:
+
+```cisco
+interface vlan 10
+ ip access-group 110 in
+!
+interface vlan 20
+ ip access-group 120 in
+```
 
 ## Configuration Workflow
 
@@ -99,15 +419,17 @@ This is the general sequence I follow as the topology evolves:
 9. Configure router interfaces and upstream connectivity.
 10. Deploy OSPF and validate adjacency plus route exchange.
 11. Add EtherChannel for redundancy and higher throughput.
-12. Configure FHRP for resilient default gateway services.
-13. Test failover, path selection, and end-to-end connectivity.
+12. Configure FHRP for resilient IPv4 default gateway services.
+13. Apply ACL policy controls and validate source-based filtering behavior.
+14. Test failover, path selection, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
-- I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read.
- I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
+- I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read. I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
-- Redundancy features such as **FHRP, EtherChannel, and spanning-tree protections** are included to reflect real design patterns.
+- In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
+- Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
+- Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
 ### Example VLSM Workflow
 
@@ -141,6 +463,15 @@ Usable range: 192.168.30.1 - 192.168.30.254
 Broadcast address: 192.168.30.255
 Gateway: 192.168.30.254
 
+Services VLAN 40
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.40.0/24
+Prefix: /24
+Usable range: 192.168.40.1 - 192.168.40.254
+Broadcast address: 192.168.40.255
+Gateway: 192.168.40.254
+
 R3-ISP P2P
 Host bits: 2^2 = 4
 Mask: 255.255.255.252
@@ -162,9 +493,10 @@ Broadcast address: 203.0.113.7
 
 As this portfolio grows, I plan to add:
 
-- More annotated screenshots
+- More screenshots
 - Per-lab notes and verification outputs
 - Troubleshooting scenarios and recovery steps
-- Additional routing, security, and services labs as I progress to my CCNA lectures
+- Additional routing, security, automation/scripting and services labs as I progress to my CCNA lectures
+- Add a zip file of the latest lab file after PR merge (GitHub actions)
 
 ---
