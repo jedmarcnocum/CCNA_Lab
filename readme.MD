@@ -88,7 +88,7 @@ The current lab design includes:
 
 The multilayer switches follow a predictable addressing structure to make verification and troubleshooting easier.
 
-For this Packet Tracer lab, FHRP is used for IPv4 only. IPv6 does not use a virtual gateway address here because IPv6 FHRP is not working reliably in Packet Tracer, so the hosts reference the physical SVI addresses on the multilayer switches instead.
+For this Packet Tracer lab, FHRP is used for IPv4 only. IPv6 does not use a virtual gateway address here because IPv6 FHRP is not working reliably in Packet Tracer, so the hosts reference the SVI addresses on the multilayer switches instead.
 
 | Role | IPv4 Pattern | IPv6 Pattern |
 |---|---|---|
@@ -427,7 +427,7 @@ This is the general sequence I follow as the topology evolves:
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
 - I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read. I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
-- In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the physical DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
+- In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
 - Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
@@ -462,6 +462,15 @@ Prefix: /24
 Usable range: 192.168.30.1 - 192.168.30.254
 Broadcast address: 192.168.30.255
 Gateway: 192.168.30.254
+
+Services VLAN 40
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.40.0/24
+Prefix: /24
+Usable range: 192.168.40.1 - 192.168.40.254
+Broadcast address: 192.168.40.255
+Gateway: 192.168.40.254
 
 R3-ISP P2P
 Host bits: 2^2 = 4
