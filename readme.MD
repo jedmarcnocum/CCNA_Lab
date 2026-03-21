@@ -21,7 +21,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - FHRP for resilient IPv4 default gateways
 - IPv4 and IPv6 dual-stack addressing
 - Static routing and WAN edge connectivity
-- Standard ACL policy enforcement for segmented access control
+- Extended ACL policy enforcement for service-based access control
 
 ## Lab Files
 
@@ -37,56 +37,7 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `FHRP (Active, Standby).pkt` | IPv4 default gateway redundancy |
 | `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
-
-## Lab Exercise: Configure Standard ACLs
-
-This exercise uses the same addressing plan already defined in this repository.
-
-### Objective
-
-Allow only the **HR VLAN (192.168.10.0/24)** to access a protected internal management endpoint in **VLAN 30 (IT)** while denying source traffic from Sales and other user VLANs.
-
-### Scenario
-
-- Protected destination host: `192.168.30.10` (example server in IT VLAN)
-- Allowed source subnet: `192.168.10.0/24` (HR)
-- Blocked source subnet: `192.168.20.0/24` (Sales)
-- Device for ACL placement: multilayer switch SVI for VLAN 30, applied **outbound** (closest to destination)
-
-### Configuration Tasks
-
-1. Create a numbered standard ACL that permits HR and denies all other sources.
-2. Apply the ACL to the VLAN 30 SVI in the outbound direction.
-3. Save configuration and verify ACL hit counters.
-4. Validate results with pings from HR and Sales test hosts to `192.168.30.10`.
-
-### Example Cisco IOS Configuration
-
-```cisco
-! On the multilayer switch performing inter-VLAN routing
-conf t
-access-list 10 permit 192.168.10.0 0.0.0.255
-access-list 10 deny any
-!
-interface vlan 30
- ip access-group 10 out
-end
-wr
-```
-
-### Verification Commands
-
-```cisco
-show access-lists
-show ip interface vlan 30
-show run | section access-list
-```
-
-### Expected Results
-
-- HR host (for example `192.168.10.1`) can reach `192.168.30.10`.
-- Sales host (for example `192.168.20.1`) is denied access to `192.168.30.10`.
-- ACL counters increment on both permit and deny statements after testing.
+| `extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
 
 ## Topology Snapshot
 
@@ -136,6 +87,95 @@ Replace `x` with the VLAN number such as `10`, `20`, or `30`.
 |---|---|---|---|---|---|---|
 | R3 to ISP | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
 | R4 to ISP | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
+
+## Extended ACL Documentation
+
+This section documents the extended ACL policy applied on both `DSW3-MAIN` and `DSW3-BACKUP` in the Packet Tracer lab.
+
+### Policy Summary
+
+- `ACL 110` is applied to `VLAN 10` inbound and allows the `192.168.10.0/24` subnet to use FTP with server `192.168.40.1`.
+- `ACL 120` is applied to `VLAN 20` inbound and blocks HTTP while permitting selected HTTPS and DNS traffic toward server `192.168.40.3`.
+- The same ACL definitions and interface bindings are configured on both multilayer switches so the policy remains consistent during gateway failover.
+- Because these are extended ACLs placed close to the source, the filtering happens as traffic enters the source VLAN SVI on the multilayer switch.
+
+### Service Test Setup
+
+- The web server at `192.168.40.3` is also configured as a DNS server.
+- A DNS `A` record for `cisco.com` points to `192.168.40.3`.
+- Hosts in `VLAN 20` use `192.168.40.3` as their DNS server so the lab can test both HTTPS and DNS behavior through `ACL 120`.
+
+### ACL Configuration on DSW3-MAIN
+
+```cisco
+ip access-list extended 110
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.40.1 eq ftp
+ permit tcp host 192.168.40.1 eq ftp 192.168.10.0 0.0.0.255
+!
+ip access-list extended 120
+ deny tcp any any eq www
+ permit tcp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq 443
+ permit tcp host 192.168.40.3 eq 443 192.168.20.0 0.0.0.255
+ permit udp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq domain
+!
+interface vlan 10
+ ip access-group 110 in
+!
+interface vlan 20
+ ip access-group 120 in
+```
+
+### ACL Configuration on DSW3-BACKUP
+
+```cisco
+ip access-list extended 110
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.40.1 eq ftp
+ permit tcp host 192.168.40.1 eq ftp 192.168.10.0 0.0.0.255
+!
+ip access-list extended 120
+ deny tcp any any eq www
+ permit tcp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq 443
+ permit tcp host 192.168.40.3 eq 443 192.168.20.0 0.0.0.255
+ permit udp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq domain
+!
+interface vlan 10
+ ip access-group 110 in
+!
+interface vlan 20
+ ip access-group 120 in
+```
+
+### Intended Behavior
+
+- Hosts in `VLAN 10` can establish FTP sessions with `192.168.40.1`.
+- Hosts in `VLAN 20` are blocked from HTTP destinations that match the ACL.
+- Hosts in `VLAN 20` can resolve `cisco.com` to `192.168.40.3`, and that DNS traffic is permitted by the ACL.
+- Hosts in `VLAN 20` are permitted to reach `192.168.40.3` on HTTPS after resolving the name or by using the direct IP address.
+
+### Verification Commands
+
+```cisco
+show access-lists
+show run interface vlan 10
+show run interface vlan 20
+show ip interface vlan 10
+show ip interface vlan 20
+show hosts
+```
+
+### Packet Tracer Note
+
+Packet Tracer has a known issue where extended ACLs can remain in the saved configuration but stop filtering correctly after the lab is closed and reopened. In this lab, the workaround is to re-apply the ACL to each VLAN interface after every Packet Tracer restart. The issue is described in this Cisco Community thread: <https://community.cisco.com/t5/switching/packet-tracer-acls-remain-in-config-but-stop-working-after/m-p/5378191#M587005>.
+
+Use the following commands to re-apply the ACL bindings on each multilayer switch:
+
+```cisco
+interface vlan 10
+ ip access-group 110 in
+!
+interface vlan 20
+ ip access-group 120 in
+```
 
 ## Configuration Workflow
 
