@@ -1,6 +1,6 @@
 # CCNA Networking Lab Portfolio
 
-A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA practice in switching, routing, redundancy, and IPv6.
+A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA practice.
 
 ![Sample lab topology](sample-lab.png)
 
@@ -45,6 +45,7 @@ The current lab design includes:
 
 - Three user VLANs: HR, Sales, and IT
 - Two distribution / multilayer switches acting as primary and backup gateways
+- An EtherChannel bundle between `DSW3-MAIN` and `DSW3-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
 - Dual upstream routers connected to an ISP
 - IPv4 and IPv6 addressing throughout the environment
@@ -87,6 +88,216 @@ Replace `x` with the VLAN number such as `10`, `20`, or `30`.
 |---|---|---|---|---|---|---|
 | R3 to ISP | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
 | R4 to ISP | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
+
+## VTP Documentation
+
+This section documents the basic VTP setup used in the switching portion of the lab.
+
+### Design Summary
+
+- The VTP domain is configured as `cisco`.
+- `DSW3-MAIN` is configured as the VTP server for VLAN management.
+- This setup is kept intentionally simple because the lab is also being used to study VLAN provisioning and future automation or scripting workflows.
+
+### Example Configuration
+
+#### DSW3-MAIN
+
+```cisco
+vtp domain cisco
+vtp mode server
+```
+
+#### VTP Clients
+
+```cisco
+vtp domain cisco
+vtp mode client
+```
+
+### Verification Commands
+
+```cisco
+show vtp status
+show vlan brief
+```
+
+## RSTP Documentation
+
+This section documents the Rapid Spanning Tree configuration used to stabilize Layer 2 paths and protect edge ports.
+
+### Design Summary
+
+- Rapid PVST is enabled for fast convergence.
+- `DSW3-MAIN` is configured as the root primary switch for all VLANs.
+- `DSW3-BACKUP` is configured as the root secondary switch for all VLANs.
+- PortFast and BPDU Guard are enabled on edge-facing access ports to speed host connectivity and protect against accidental switch connections.
+- Root Guard is enabled on distribution switch interfaces facing downstream access switches to prevent an unexpected switch from becoming the spanning-tree root.
+
+### Example Configuration
+
+#### DSW3-MAIN
+
+```cisco
+spanning-tree mode rapid-pvst
+spanning-tree vlan 1,10,20,30,40 root primary
+```
+
+#### DSW3-BACKUP
+
+```cisco
+spanning-tree mode rapid-pvst
+spanning-tree vlan 1,10,20,30,40 root secondary
+```
+
+#### Distribution Downlinks to Access Switches
+
+```cisco
+interface <downstream-access-uplink>
+ spanning-tree guard root
+```
+
+#### Access Switch Edge Protection
+
+```cisco
+spanning-tree mode rapid-pvst
+spanning-tree portfast default
+spanning-tree bpduguard default
+```
+
+### Verification Commands
+
+```cisco
+show spanning-tree
+show spanning-tree vlan 10
+show spanning-tree summary
+show spanning-tree inconsistentports
+```
+
+## EtherChannel Documentation
+
+This section documents the EtherChannel link configured between `DSW3-MAIN` and `DSW3-BACKUP`.
+
+### Design Summary
+
+- The direct inter-switch uplinks between `DSW3-MAIN` and `DSW3-BACKUP` are bundled into a single EtherChannel for redundancy and additional bandwidth.
+- This keeps the distribution layer resilient because the logical port-channel remains available if one member link fails.
+- The bundled inter-switch link also simplifies spanning-tree operation by presenting the parallel links as one logical path.
+
+### Intended Behavior
+
+- Traffic between the two multilayer switches can continue flowing even if a single physical member link goes down.
+- The switches treat the port-channel as one logical connection instead of separate parallel trunks.
+- The EtherChannel provides both redundancy and higher aggregate throughput across the distribution pair.
+
+### Verification Commands
+
+```cisco
+show etherchannel summary
+show interfaces trunk
+show spanning-tree
+```
+
+## OSPF Documentation
+
+This section documents the OSPF design used for dynamic routing and failover behavior in the lab.
+
+### Loopback Router IDs
+
+| Device | Loopback Address | OSPF Router ID |
+|---|---|---|
+| `DSW3-MAIN` | `1.1.1.1/32` | `1.1.1.1` |
+| `DSW3-BACKUP` | `2.2.2.2/32` | `2.2.2.2` |
+| `R3` | `3.3.3.3/32` | `3.3.3.3` |
+| `R4` | `4.4.4.4/32` | `4.4.4.4` |
+| `ISP` | `8.8.8.8/32` | `8.8.8.8` |
+
+### OSPF Design Summary
+
+- Each Layer 3 device uses a loopback interface to provide a stable OSPF router ID.
+- OSPF is configured in a single area only: `area 0`.
+- On the multilayer switches, VLAN SVIs are advertised through `network` statements with wildcard masks under the OSPF process.
+- Physical routed interfaces are enabled individually under the interface with `ip ospf 1 area 0`.
+- OSPF is used to advertise internal routed paths and upstream connectivity across the lab.
+- The topology is designed so path preference and failover can be observed when the primary route changes or becomes unavailable.
+
+### Example Loopback and Router ID Configuration
+
+#### DSW3-MAIN
+
+```cisco
+interface loopback0
+ ip address 1.1.1.1 255.255.255.255
+!
+router ospf 1
+ router-id 1.1.1.1
+ network 1.1.1.1 0.0.0.0 area 0
+ network 192.168.10.0 0.0.0.255 area 0
+ network 192.168.20.0 0.0.0.255 area 0
+ network 192.168.30.0 0.0.0.255 area 0
+ network 192.168.40.0 0.0.0.255 area 0
+```
+
+#### DSW3-BACKUP
+
+```cisco
+interface loopback0
+ ip address 2.2.2.2 255.255.255.255
+!
+router ospf 1
+ router-id 2.2.2.2
+ network 2.2.2.2 0.0.0.0 area 0
+ network 192.168.10.0 0.0.0.255 area 0
+ network 192.168.20.0 0.0.0.255 area 0
+ network 192.168.30.0 0.0.0.255 area 0
+ network 192.168.40.0 0.0.0.255 area 0
+```
+
+#### R3
+
+```cisco
+interface loopback0
+ ip address 3.3.3.3 255.255.255.255
+!
+router ospf 1
+ router-id 3.3.3.3
+```
+
+#### R4
+
+```cisco
+interface loopback0
+ ip address 4.4.4.4 255.255.255.255
+!
+router ospf 1
+ router-id 4.4.4.4
+```
+
+#### ISP
+
+```cisco
+interface loopback0
+ ip address 8.8.8.8 255.255.255.255
+!
+router ospf 1
+ router-id 8.8.8.8
+```
+
+### Routed Interface OSPF Enablement
+
+```cisco
+interface <routed-uplink>
+ ip ospf 1 area 0
+```
+
+### Verification Commands
+
+```cisco
+show ip ospf neighbor
+show ip route ospf
+show ip ospf interface brief
+show ip protocols
+```
 
 ## Extended ACL Documentation
 
@@ -201,7 +412,8 @@ This is the general sequence I follow as the topology evolves:
 - I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read. I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
 - In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the physical DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
-- Redundancy features such as **FHRP, EtherChannel, and spanning-tree protections** are included to reflect real design patterns.
+- Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
+- Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
 ### Example VLSM Workflow
 
@@ -256,7 +468,7 @@ Broadcast address: 203.0.113.7
 
 As this portfolio grows, I plan to add:
 
-- More annotated screenshots
+- More screenshots
 - Per-lab notes and verification outputs
 - Troubleshooting scenarios and recovery steps
 - Additional routing, security, and services labs as I progress to my CCNA lectures
