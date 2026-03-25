@@ -95,10 +95,10 @@ The current lab design includes:
 
 | Service | Hostname | IPv4 Address | Role |
 |---|---|---|---|
-| File Server | `file.lab.local` | `192.168.40.1` | FTP service for `VLAN 10` testing |
-| Admin Server | `admin.lab.local` | `192.168.40.2` | DNS service for the lab |
-| Web Server | `web.lab.local` | `192.168.40.3` | HTTPS service for `VLAN 20` testing |
-| DHCP Server | `dhcp.lab.local` | `192.168.40.4` | DHCP pools for `VLAN 10` through `VLAN 30` |
+| File Server | `file.services.local` | `192.168.40.1` | FTP service for `VLAN 10` testing with account `hr` / `hr` |
+| Admin Server | `admin.services.local` | `192.168.40.2` | DNS service for the lab |
+| Web Server | `web.services.local` | `192.168.40.3` | HTTPS service for `VLAN 20` testing |
+| DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10` through `VLAN 30` |
 
 ### FHRP / Gateway Pattern
 
@@ -337,34 +337,42 @@ This section documents the named extended ACL policy applied on both `DSW3-MAIN`
 
 ### Policy Summary
 
-- `HR_IN` is applied inbound on `VLAN 10` and permits HR clients to reach the DNS server at `192.168.40.2` and the FTP server at `192.168.40.1`.
-- `HR_OUT` is applied outbound on `VLAN 10` and permits the matching return DNS and FTP traffic back toward the HR subnet.
-- `SALES_IN` is applied inbound on `VLAN 20` and permits Sales clients to reach the DNS server at `192.168.40.2` and the HTTPS server at `192.168.40.3`.
-- `SALES_OUT` is applied outbound on `VLAN 20` and permits the matching return DNS and HTTPS traffic back toward the Sales subnet.
+- `HR_IN` is applied inbound on `VLAN 10` and permits DHCP first, DNS second, and FTP third for HR clients.
+- `HR_OUT` is applied outbound on `VLAN 10` and permits the matching DHCP, DNS, and FTP return traffic back toward the HR subnet.
+- `SALES_IN` is applied inbound on `VLAN 20` and permits DHCP first, DNS second, and HTTPS third for Sales clients.
+- `SALES_OUT` is applied outbound on `VLAN 20` and permits the matching DHCP, DNS, and HTTPS return traffic back toward the Sales subnet.
 - The same ACL definitions and interface bindings are configured on both multilayer switches so the policy remains consistent during gateway failover.
+- Traffic that does not match those permitted services is dropped by the ACLs' implicit deny.
 
 ### Service Test Setup
 
 - DNS is hosted on the admin server at `192.168.40.2` in `VLAN 40`.
-- The current DNS `A` records are `admin.lab.local`, `dhcp.lab.local`, `file.lab.local`, and `web.lab.local`.
+- The current DNS `A` records are `admin.services.local`, `dhcp.services.local`, `file.services.local`, and `web.services.local`.
 - HR clients use DNS plus FTP to reach the file server, while Sales clients use DNS plus HTTPS to reach the web server.
+- The HR FTP validation account is username `hr` with password `hr`.
 
 ### ACL Configuration on Both Multilayer Switches
 
 ```cisco
 ip access-list extended HR_IN
+ permit udp any eq bootpc any eq bootps
+ permit udp 192.168.10.0 0.0.0.255 host 192.168.40.4
  permit udp 192.168.10.0 0.0.0.255 host 192.168.40.2 eq domain
  permit tcp 192.168.10.0 0.0.0.255 host 192.168.40.1 eq ftp
 !
 ip access-list extended HR_OUT
+ permit udp host 192.168.40.4 192.168.10.0 0.0.0.255
  permit udp host 192.168.40.2 eq domain 192.168.10.0 0.0.0.255
  permit tcp host 192.168.40.1 eq ftp 192.168.10.0 0.0.0.255
 !
 ip access-list extended SALES_IN
+ permit udp any eq bootpc any eq bootps
+ permit udp 192.168.20.0 0.0.0.255 host 192.168.40.4
  permit udp 192.168.20.0 0.0.0.255 host 192.168.40.2 eq domain
  permit tcp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq 443
 !
 ip access-list extended SALES_OUT
+ permit udp host 192.168.40.4 192.168.20.0 0.0.0.255
  permit udp host 192.168.40.2 eq domain 192.168.20.0 0.0.0.255
  permit tcp host 192.168.40.3 eq 443 192.168.20.0 0.0.0.255
 !
@@ -379,9 +387,28 @@ interface vlan 20
 
 ### Intended Behavior
 
-- Hosts in `VLAN 10` can resolve `file.lab.local` through `192.168.40.2` and establish FTP sessions with `192.168.40.1`.
-- Hosts in `VLAN 20` can resolve `web.lab.local` through `192.168.40.2` and reach `192.168.40.3` over HTTPS.
+- Hosts in `VLAN 10` can obtain DHCP, resolve `file.services.local` through `192.168.40.2`, and establish FTP sessions with `192.168.40.1` using `hr` / `hr`.
+- Hosts in `VLAN 20` can obtain DHCP, resolve `web.services.local` through `192.168.40.2`, and reach `192.168.40.3` over HTTPS.
 - Return traffic for those approved flows is permitted by the outbound ACLs on `VLAN 10` and `VLAN 20`.
+- Other traffic, such as an HR client trying to `ping file.services.local`, is denied after DHCP, DNS, and FTP are matched.
+
+### PC1 ACL Test
+
+The screenshot below shows the expected `VLAN 10` behavior from `PC1`: DHCP succeeds first, DNS resolves the FTP server second, FTP is allowed third, and a later ping is denied by the ACL.
+
+![PC1 ACL test showing DHCP, DNS, and FTP allowed while ping is denied](pc1-acl-test.svg)
+
+### PC2 Web Tests
+
+The screenshots below show the `VLAN 20` browser tests from `PC2` against `web.services.local`.
+
+#### PC2 HTTP Test
+
+![PC2 HTTP test against web.services.local](pc2-http-test.png)
+
+#### PC2 HTTPS Test
+
+![PC2 HTTPS test against web.services.local](pc2-https-test.png)
 
 ### Verification Commands
 
@@ -417,11 +444,11 @@ This section documents the centralized services added in the latest Packet Trace
 ### DNS Summary
 
 - The admin server at `192.168.40.2` now hosts DNS for the lab.
-- The current `lab.local` `A` records are:
-  - `admin.lab.local` -> `192.168.40.2`
-  - `dhcp.lab.local` -> `192.168.40.4`
-  - `file.lab.local` -> `192.168.40.1`
-  - `web.lab.local` -> `192.168.40.3`
+- The current `services.local` `A` records are:
+  - `admin.services.local` -> `192.168.40.2`
+  - `dhcp.services.local` -> `192.168.40.4`
+  - `file.services.local` -> `192.168.40.1`
+  - `web.services.local` -> `192.168.40.3`
 - This keeps name resolution centralized in the services VLAN instead of tying DNS to the web server.
 
 ### DHCP Summary
