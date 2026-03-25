@@ -16,6 +16,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [EtherChannel Documentation](#etherchannel-documentation)
 - [OSPF Documentation](#ospf-documentation)
 - [Extended ACL Documentation](#extended-acl-documentation)
+- [DNS and DHCP Documentation](#dns-and-dhcp-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -38,6 +39,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - IPv4 and IPv6 dual-stack addressing
 - Static routing and WAN edge connectivity
 - Extended ACL policy enforcement for service-based access control
+- Centralized DNS and DHCP services for user VLANs
 
 ## Lab Files
 
@@ -53,7 +55,8 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `FHRP (Active, Standby).pkt` | IPv4 default gateway redundancy |
 | `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
-| `extended ACL.pkt` | Latest lab file: per-VLAN extended ACLs for service-based access control |
+| `Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
+| `DNS & DHCP.pkt` | Latest lab file: centralized DNS and DHCP services added to the services VLAN |
 
 ## Topology Snapshot
 
@@ -64,6 +67,8 @@ The current lab design includes:
 - An EtherChannel bundle between `DSW3-MAIN` and `DSW3-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
 - Dual upstream routers connected to an ISP
+- Centralized services in `VLAN 40`, including file, admin/DNS, web, and DHCP servers
+- DHCP scope delivery for user VLANs `10`, `20`, and `30`
 - IPv4 and IPv6 addressing throughout the environment
 
 ## Addressing Plan
@@ -85,6 +90,15 @@ The current lab design includes:
 | 20 | `192.168.20.1` | `2001:DB8:20::1` |
 | 30 | `192.168.30.1` | `2001:DB8:30::1` |
 | 40 | `192.168.40.1` | `2001:DB8:40::1` |
+
+### Services VLAN Infrastructure
+
+| Service | Hostname | IPv4 Address | Role |
+|---|---|---|---|
+| File Server | `file.lab.local` | `192.168.40.1` | FTP service for `VLAN 10` testing |
+| Admin Server | `admin.lab.local` | `192.168.40.2` | DNS service for the lab |
+| Web Server | `web.lab.local` | `192.168.40.3` | HTTPS service for `VLAN 20` testing |
+| DHCP Server | `dhcp.lab.local` | `192.168.40.4` | DHCP pools for `VLAN 10` through `VLAN 30` |
 
 ### FHRP / Gateway Pattern
 
@@ -319,67 +333,55 @@ show ip protocols
 
 ## Extended ACL Documentation
 
-This section documents the extended ACL policy applied on both `DSW3-MAIN` and `DSW3-BACKUP` in the Packet Tracer lab.
+This section documents the named extended ACL policy applied on both `DSW3-MAIN` and `DSW3-BACKUP` in the Packet Tracer lab.
 
 ### Policy Summary
 
-- `ACL 110` is applied to `VLAN 10` inbound and allows the `192.168.10.0/24` subnet to use FTP with server `192.168.40.1` in `VLAN 40`.
-- `ACL 120` is applied to `VLAN 20` inbound and blocks HTTP while permitting selected HTTPS and DNS traffic toward server `192.168.40.3` in `VLAN 40`.
+- `HR_IN` is applied inbound on `VLAN 10` and permits HR clients to reach the DNS server at `192.168.40.2` and the FTP server at `192.168.40.1`.
+- `HR_OUT` is applied outbound on `VLAN 10` and permits the matching return DNS and FTP traffic back toward the HR subnet.
+- `SALES_IN` is applied inbound on `VLAN 20` and permits Sales clients to reach the DNS server at `192.168.40.2` and the HTTPS server at `192.168.40.3`.
+- `SALES_OUT` is applied outbound on `VLAN 20` and permits the matching return DNS and HTTPS traffic back toward the Sales subnet.
 - The same ACL definitions and interface bindings are configured on both multilayer switches so the policy remains consistent during gateway failover.
-- Because these are extended ACLs placed close to the source, the filtering happens as traffic enters the source VLAN SVI on the multilayer switch.
 
 ### Service Test Setup
 
-- The web server at `192.168.40.3` in `VLAN 40` is also configured as a DNS server.
-- A DNS `A` record for `cisco.com` points to `192.168.40.3`.
-- Hosts in `VLAN 20` use `192.168.40.3` as their DNS server so the lab can test both HTTPS and DNS behavior through `ACL 120`.
+- DNS is hosted on the admin server at `192.168.40.2` in `VLAN 40`.
+- The current DNS `A` records are `admin.lab.local`, `dhcp.lab.local`, `file.lab.local`, and `web.lab.local`.
+- HR clients use DNS plus FTP to reach the file server, while Sales clients use DNS plus HTTPS to reach the web server.
 
-### ACL Configuration on DSW3-MAIN
-
-```cisco
-ip access-list extended 110
- permit tcp 192.168.10.0 0.0.0.255 host 192.168.40.1 eq ftp
- permit tcp host 192.168.40.1 eq ftp 192.168.10.0 0.0.0.255
-!
-ip access-list extended 120
- deny tcp any any eq www
- permit tcp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq 443
- permit tcp host 192.168.40.3 eq 443 192.168.20.0 0.0.0.255
- permit udp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq domain
-!
-interface vlan 10
- ip access-group 110 in
-!
-interface vlan 20
- ip access-group 120 in
-```
-
-### ACL Configuration on DSW3-BACKUP
+### ACL Configuration on Both Multilayer Switches
 
 ```cisco
-ip access-list extended 110
+ip access-list extended HR_IN
+ permit udp 192.168.10.0 0.0.0.255 host 192.168.40.2 eq domain
  permit tcp 192.168.10.0 0.0.0.255 host 192.168.40.1 eq ftp
+!
+ip access-list extended HR_OUT
+ permit udp host 192.168.40.2 eq domain 192.168.10.0 0.0.0.255
  permit tcp host 192.168.40.1 eq ftp 192.168.10.0 0.0.0.255
 !
-ip access-list extended 120
- deny tcp any any eq www
+ip access-list extended SALES_IN
+ permit udp 192.168.20.0 0.0.0.255 host 192.168.40.2 eq domain
  permit tcp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq 443
+!
+ip access-list extended SALES_OUT
+ permit udp host 192.168.40.2 eq domain 192.168.20.0 0.0.0.255
  permit tcp host 192.168.40.3 eq 443 192.168.20.0 0.0.0.255
- permit udp 192.168.20.0 0.0.0.255 host 192.168.40.3 eq domain
 !
 interface vlan 10
- ip access-group 110 in
+ ip access-group HR_IN in
+ ip access-group HR_OUT out
 !
 interface vlan 20
- ip access-group 120 in
+ ip access-group SALES_IN in
+ ip access-group SALES_OUT out
 ```
 
 ### Intended Behavior
 
-- Hosts in `VLAN 10` can establish FTP sessions with `192.168.40.1`.
-- Hosts in `VLAN 20` are blocked from HTTP destinations that match the ACL.
-- Hosts in `VLAN 20` can resolve `cisco.com` to `192.168.40.3`, and that DNS traffic is permitted by the ACL.
-- Hosts in `VLAN 20` are permitted to reach `192.168.40.3` on HTTPS after resolving the name or by using the direct IP address.
+- Hosts in `VLAN 10` can resolve `file.lab.local` through `192.168.40.2` and establish FTP sessions with `192.168.40.1`.
+- Hosts in `VLAN 20` can resolve `web.lab.local` through `192.168.40.2` and reach `192.168.40.3` over HTTPS.
+- Return traffic for those approved flows is permitted by the outbound ACLs on `VLAN 10` and `VLAN 20`.
 
 ### Verification Commands
 
@@ -400,10 +402,40 @@ Use the following commands to re-apply the ACL bindings on each multilayer switc
 
 ```cisco
 interface vlan 10
- ip access-group 110 in
+ ip access-group HR_IN in
+ ip access-group HR_OUT out
 !
 interface vlan 20
- ip access-group 120 in
+ ip access-group SALES_IN in
+ ip access-group SALES_OUT out
+```
+
+## DNS and DHCP Documentation
+
+This section documents the centralized services added in the latest Packet Tracer lab version.
+
+### DNS Summary
+
+- The admin server at `192.168.40.2` now hosts DNS for the lab.
+- The current `lab.local` `A` records are:
+  - `admin.lab.local` -> `192.168.40.2`
+  - `dhcp.lab.local` -> `192.168.40.4`
+  - `file.lab.local` -> `192.168.40.1`
+  - `web.lab.local` -> `192.168.40.3`
+- This keeps name resolution centralized in the services VLAN instead of tying DNS to the web server.
+
+### DHCP Summary
+
+- A dedicated DHCP server at `192.168.40.4` provides address pools for `VLAN 10`, `VLAN 20`, and `VLAN 30`.
+- Addresses `.250` through `.254` are excluded in each user VLAN so they remain available for static assignments such as gateways, routers, and servers.
+- Services in `VLAN 40` continue to use static addressing.
+
+### DHCP Excluded Addresses
+
+```cisco
+ip dhcp excluded-address 192.168.10.250 192.168.10.254
+ip dhcp excluded-address 192.168.20.250 192.168.20.254
+ip dhcp excluded-address 192.168.30.250 192.168.30.254
 ```
 
 ## Configuration Workflow
@@ -422,8 +454,9 @@ This is the general sequence I follow as the topology evolves:
 10. Deploy OSPF and validate adjacency plus route exchange.
 11. Add EtherChannel for redundancy and higher throughput.
 12. Configure FHRP for resilient IPv4 default gateway services.
-13. Apply ACL policy controls and validate source-based filtering behavior.
-14. Test failover, path selection, and end-to-end connectivity.
+13. Add centralized DNS and DHCP services for client VLANs.
+14. Apply ACL policy controls and validate source-based filtering behavior.
+15. Test failover, path selection, name resolution, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -431,6 +464,7 @@ This is the general sequence I follow as the topology evolves:
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
 - In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
 - Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
+- Core shared services are centralized in **VLAN 40**, with static server IPs and DHCP scopes for the user VLANs.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
 ### Example VLSM Workflow
