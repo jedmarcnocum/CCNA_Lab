@@ -333,7 +333,7 @@ show ip protocols
 
 ## Extended ACL Documentation
 
-This section documents the named extended ACL policy applied on both `DSW3-MAIN` and `DSW3-BACKUP` in the Packet Tracer lab.
+This section documents the named extended ACL policy applied on both `DSW3-main` and `DSW3-backup` in the Packet Tracer lab.
 
 ### Policy Summary
 
@@ -341,7 +341,7 @@ This section documents the named extended ACL policy applied on both `DSW3-MAIN`
 - `HR_OUT` is applied outbound on `VLAN 10` and permits the matching DHCP, DNS, and FTP return traffic back toward the HR subnet.
 - `SALES_IN` is applied inbound on `VLAN 20` and permits DHCP first, DNS second, and HTTPS third for Sales clients.
 - `SALES_OUT` is applied outbound on `VLAN 20` and permits the matching DHCP, DNS, and HTTPS return traffic back toward the Sales subnet.
-- The same ACL definitions and interface bindings are configured on both multilayer switches so the policy remains consistent during gateway failover.
+- The same ACL definitions and interface bindings are configured on both `DSW3-main` and `DSW3-backup` so the policy remains consistent during gateway failover.
 - Traffic that does not match those permitted services is dropped by the ACLs' implicit deny.
 
 ### Service Test Setup
@@ -351,7 +351,7 @@ This section documents the named extended ACL policy applied on both `DSW3-MAIN`
 - HR clients use DNS plus FTP to reach the file server, while Sales clients use DNS plus HTTPS to reach the web server.
 - The HR FTP validation account is username `hr` with password `hr`.
 
-### ACL Configuration on Both Multilayer Switches
+### ACL Configuration on DSW3-main and DSW3-backup
 
 ```cisco
 ip access-list extended HR_IN
@@ -394,7 +394,13 @@ interface vlan 20
 
 ### PC1 ACL Test
 
-The screenshot below shows the expected `VLAN 10` behavior from `PC1`: DHCP succeeds first, DNS resolves the FTP server second, FTP is allowed third, and a later ping is denied by the ACL.
+The screenshots below show the expected `VLAN 10` behavior from `PC1`: DHCP succeeds first, DNS resolves the FTP server second, FTP is allowed third, and a later ping is denied by the ACL.
+
+#### PC1 DHCP Test
+
+![PC1 DHCP test showing the client receiving addressing information successfully](screenshots/pc1-dhcp-test.png)
+
+#### PC1 FTP and Ping Test
 
 ![PC1 ACL test showing DHCP, DNS, and FTP allowed while ping is denied](screenshots/pc1-ftp-test-deny-all.png)
 
@@ -423,9 +429,9 @@ show hosts
 
 ### Packet Tracer Note
 
-Packet Tracer has a known issue where extended ACLs can remain in the saved configuration but stop filtering correctly after the lab is closed and reopened. In this lab, the workaround is to re-apply the ACL to each VLAN interface after every Packet Tracer restart. The issue is described in this Cisco Community thread: <https://community.cisco.com/t5/switching/packet-tracer-acls-remain-in-config-but-stop-working-after/m-p/5378191#M587005>.
+Packet Tracer has a known issue where extended ACLs can remain in the saved configuration but stop filtering correctly after the lab is closed and reopened. In this lab, the workaround is to re-apply the ACL to each VLAN interface on `DSW3-main` and `DSW3-backup` after every Packet Tracer restart. The issue is described in this Cisco Community thread: <https://community.cisco.com/t5/switching/packet-tracer-acls-remain-in-config-but-stop-working-after/m-p/5378191#M587005>.
 
-Use the following commands to re-apply the ACL bindings on each multilayer switch:
+Use the following commands to re-apply the ACL bindings on `DSW3-main` and `DSW3-backup`:
 
 ```cisco
 interface vlan 10
@@ -445,10 +451,10 @@ This section documents the centralized services added in the latest Packet Trace
 
 - The admin server at `192.168.40.2` now hosts DNS for the lab.
 - The current `services.local` `A` records are:
-  - `admin.services.local` -> `192.168.40.2`
-  - `dhcp.services.local` -> `192.168.40.4`
   - `file.services.local` -> `192.168.40.1`
+  - `admin.services.local` -> `192.168.40.2`
   - `web.services.local` -> `192.168.40.3`
+  - `dhcp.services.local` -> `192.168.40.4`
 - This keeps name resolution centralized in the services VLAN instead of tying DNS to the web server.
 
 ### DHCP Summary
