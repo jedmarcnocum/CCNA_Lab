@@ -2,7 +2,7 @@
 
 A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA practice.
 
-![Sample lab topology](sample-lab.png)
+![Sample lab topology](screenshots/sample-lab.png)
 
 ## Table of Contents
 
@@ -396,7 +396,7 @@ interface vlan 20
 
 The screenshot below shows the expected `VLAN 10` behavior from `PC1`: DHCP succeeds first, DNS resolves the FTP server second, FTP is allowed third, and a later ping is denied by the ACL.
 
-![PC1 ACL test showing DHCP, DNS, and FTP allowed while ping is denied](pc1-acl-test.svg)
+![PC1 ACL test showing DHCP, DNS, and FTP allowed while ping is denied](screenshots/pc1-ftp-test-deny-all.png)
 
 ### PC2 Web Tests
 
@@ -404,11 +404,11 @@ The screenshots below show the `VLAN 20` browser tests from `PC2` against `web.s
 
 #### PC2 HTTP Test
 
-![PC2 HTTP test against web.services.local](pc2-http-test.png)
+![PC2 HTTP test against web.services.local](screenshots/pc2-http-test.png)
 
 #### PC2 HTTPS Test
 
-![PC2 HTTPS test against web.services.local](pc2-https-test.png)
+![PC2 HTTPS test against web.services.local](screenshots/pc2-https-test.png)
 
 ### Verification Commands
 
