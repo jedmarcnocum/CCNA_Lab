@@ -12,7 +12,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [Topology Snapshot](#topology-snapshot)
 - [Addressing Plan](#addressing-plan)
 - [VTP Documentation](#vtp-documentation)
-- [RSTP Documentation](#rstp-documentation)
+- [PVST Documentation](#pvst-documentation)
 - [EtherChannel Documentation](#etherchannel-documentation)
 - [OSPF Documentation](#ospf-documentation)
 - [Extended ACL Documentation](#extended-acl-documentation)
@@ -154,45 +154,38 @@ show vtp status
 show vlan brief
 ```
 
-## RSTP Documentation
+## PVST Documentation
 
-This section documents the Rapid Spanning Tree configuration used to stabilize Layer 2 paths and protect edge ports.
+This section documents the PVST configuration used to stabilize Layer 2 paths and protect edge ports.
 
 ### Design Summary
 
-- Rapid PVST is enabled for fast convergence.
+- PVST is enabled for per-VLAN spanning-tree control.
 - `DSW3-MAIN` is configured as the root primary switch for all VLANs.
 - `DSW3-BACKUP` is configured as the root secondary switch for all VLANs.
-- PortFast and BPDU Guard are enabled on edge-facing access ports to speed host connectivity and protect against accidental switch connections.
-- Root Guard is enabled on distribution switch interfaces facing downstream access switches to prevent an unexpected switch from becoming the spanning-tree root.
+- STP protections, including PortFast, BPDU Guard, and Root Guard, are applied on the access switches rather than on the distribution switches.
+- On the access switches, these features speed host connectivity and help prevent accidental switch connections or unexpected root-bridge changes.
 
 ### Example Configuration
 
 #### DSW3-MAIN
 
 ```cisco
-spanning-tree mode rapid-pvst
+spanning-tree mode pvst
 spanning-tree vlan 1,10,20,30,40 root primary
 ```
 
 #### DSW3-BACKUP
 
 ```cisco
-spanning-tree mode rapid-pvst
+spanning-tree mode pvst
 spanning-tree vlan 1,10,20,30,40 root secondary
-```
-
-#### Distribution Downlinks to Access Switches
-
-```cisco
-interface <downstream-access-uplink>
- spanning-tree guard root
 ```
 
 #### Access Switch Edge Protection
 
 ```cisco
-spanning-tree mode rapid-pvst
+spanning-tree mode pvst
 spanning-tree portfast default
 spanning-tree bpduguard default
 ```
