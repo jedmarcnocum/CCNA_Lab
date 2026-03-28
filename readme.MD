@@ -448,6 +448,7 @@ This section documents the centralized services added in the latest Packet Trace
   - `admin.services.local` -> `192.168.40.2`
   - `web.services.local` -> `192.168.40.3`
   - `dhcp.services.local` -> `192.168.40.4`
+- Packet Tracer does not support DDNS for end hosts, so host devices cannot be reached by domain name unless you create static DNS records for them manually.
 - This keeps name resolution centralized in the services VLAN instead of tying DNS to the web server.
 
 ### DHCP Summary
