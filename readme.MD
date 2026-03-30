@@ -506,15 +506,17 @@ This section documents the basic monitoring features added in the latest Packet 
 
 - `R3` is configured for SNMP community-string based monitoring.
 - The configured community strings are `ciscorw` for read/write access and `ciscoro` for read-only access.
-- Packet Tracer MIB Browser testing can be done from any host against `3.3.3.3` or `192.168.1.254` on UDP port `161`.
+- To test SNMP, use the Packet Tracer MIB Browser on any host and query `R3` at `3.3.3.3` or `192.168.1.254` on UDP port `161`.
 
-### MIB Browser Advanced Tab Values
+### MIB Browser Advanced Tab Example Values
 
 | Setting | Value |
 |---|---|
-| Read Community | `ciscorw` |
-| Write Community | `ciscoro` |
-| SNMP Version | `v1` or `v2` |
+| Address | `3.3.3.3` |
+| Port | `161` |
+| Read Community | `ciscoro` |
+| Write Community | `ciscorw` |
+| SNMP Version | `v1` |
 
 ### R3 SNMP Configuration
 
@@ -546,8 +548,8 @@ logging 192.168.40.2
 
 ### Packet Tracer Limitations
 
-- Packet Tracer SNMP support in this lab is limited to community strings with `SNMPv1` and `SNMPv2`.
-- Packet Tracer syslog handling is simplified, and this lab uses the default `debugging` trap level for testing.
+- SNMP configuration commands in this lab is limited to community strings with `SNMPv1` and `SNMPv2`.
+- Syslog handling is simplified, and this lab uses the limited `debugging` trap level for testing.
 
 ## Configuration Workflow
 
@@ -645,6 +647,6 @@ As this portfolio grows, I plan to add:
 - Per-lab notes and verification outputs
 - Troubleshooting scenarios and recovery steps
 - Additional routing, security, automation/scripting and services labs as I progress to my CCNA lectures
-- Remake this lab in EVE-NG/GNS3.
+- Remake this lab in EVE-NG/GNS3
 
 ---
