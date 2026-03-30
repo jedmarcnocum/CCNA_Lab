@@ -17,6 +17,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [OSPF Documentation](#ospf-documentation)
 - [Extended ACL Documentation](#extended-acl-documentation)
 - [DNS and DHCP Documentation](#dns-and-dhcp-documentation)
+- [NTP Documentation](#ntp-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -40,6 +41,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - Static routing and WAN edge connectivity
 - Extended ACL policy enforcement for service-based access control
 - Centralized DNS and DHCP services for user VLANs
+- Centralized NTP for consistent device timestamps across routers and switches
 
 ## Lab Files
 
@@ -67,7 +69,7 @@ The current lab design includes:
 - An EtherChannel bundle between `DSW3-MAIN` and `DSW3-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
 - Dual upstream routers connected to an ISP
-- Centralized services in `VLAN 40`, including file, admin/DNS, web, and DHCP servers
+- Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP), web, and DHCP servers
 - DHCP scope delivery for user VLANs `10`, `20`, and `30`
 - IPv4 and IPv6 addressing throughout the environment
 
@@ -96,7 +98,7 @@ The current lab design includes:
 | Service | Hostname | IPv4 Address | Role |
 |---|---|---|---|
 | File Server | `file.services.local` | `192.168.40.1` | FTP service for `VLAN 10` testing with account `hr` / `hr` |
-| Admin Server | `admin.services.local` | `192.168.40.2` | DNS service for the lab |
+| Admin Server | `admin.services.local` | `192.168.40.2` | DNS and NTP service for the lab |
 | Web Server | `web.services.local` | `192.168.40.3` | HTTPS service for `VLAN 20` testing |
 | DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10` through `VLAN 30` |
 
@@ -465,25 +467,52 @@ ip dhcp excluded-address 192.168.20.250 192.168.20.254
 ip dhcp excluded-address 192.168.30.250 192.168.30.254
 ```
 
+## NTP Documentation
+
+This section documents the time synchronization baseline used across the routing and switching devices in the lab.
+
+### NTP Summary
+
+- The admin server at `192.168.40.2` also acts as the NTP server for the lab.
+- All routers and switches are configured to use `192.168.40.2` as their NTP source.
+- The lab standard timezone is `AEST`, configured on Cisco devices as `clock timezone AEST 10 0` for Australian Eastern Standard Time (`UTC+10`).
+- This keeps timestamps aligned across the topology for troubleshooting, syslog review, and general verification.
+
+### Router and Switch Baseline Configuration
+
+Apply the following on each router and switch in the topology:
+
+```cisco
+clock timezone AEST 10 0
+ntp server 192.168.40.2
+```
+
+### Verification Commands
+
+```cisco
+show clock detail
+show ntp associations
+show running-config | include clock timezone|ntp server
+```
+
 ## Configuration Workflow
 
-This is the general sequence I follow as the topology evolves:
-
 1. Configure hostnames on routers, switches, and hosts.
-2. Assign IPv4 and IPv6 addressing to end devices.
-3. Create VLANs and configure VTP where required.
-4. Build trunk links between switches.
-5. Configure routed ports and WAN point-to-point links.
-6. Enable RSTP and harden the edge with PortFast and BPDU Guard.
-7. Create SVIs for inter-VLAN routing.
-8. Verify VLAN reachability and gateway connectivity.
-9. Configure router interfaces and upstream connectivity.
-10. Deploy OSPF and validate adjacency plus route exchange.
-11. Add EtherChannel for redundancy and higher throughput.
-12. Configure FHRP for resilient IPv4 default gateway services.
-13. Add centralized DNS and DHCP services for client VLANs.
-14. Apply ACL policy controls and validate source-based filtering behavior.
-15. Test failover, path selection, name resolution, and end-to-end connectivity.
+2. Configure the NTP server and clients.
+3. Assign IPv4 and IPv6 addressing to end devices.
+4. Create VLANs and configure VTP where required.
+5. Build trunk links between switches.
+6. Configure routed ports and WAN point-to-point links.
+7. Enable RSTP and harden the edge with PortFast and BPDU Guard.
+8. Create SVIs for inter-VLAN routing.
+9. Verify VLAN reachability and gateway connectivity.
+10. Configure router interfaces and upstream connectivity.
+11. Deploy OSPF and validate adjacency plus route exchange.
+12. Add EtherChannel for redundancy and higher throughput.
+13. Configure FHRP for resilient IPv4 default gateway services.
+14. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
+15. Apply ACL policy controls and validate source-based filtering behavior.
+16. Test failover, path selection, name resolution, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -491,7 +520,7 @@ This is the general sequence I follow as the topology evolves:
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
 - In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
 - Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
-- Core shared services are centralized in **VLAN 40**, with static server IPs and DHCP scopes for the user VLANs.
+- Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the user VLANs, and the admin server providing both DNS and NTP.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
 ### Example VLSM Workflow
