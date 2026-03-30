@@ -26,3 +26,13 @@ ip access-group HR_OUT out
 int vlan20
 ip access-group SALES_IN out
 ip access-group SALES_OUT out
+
+
+To remove:
+int vlan10
+no ip access-group HR_IN in
+no ip access-group HR_OUT out
+
+int vlan20
+no ip access-group SALES_IN out
+no ip access-group SALES_OUT out
