@@ -18,6 +18,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [Extended ACL Documentation](#extended-acl-documentation)
 - [DNS and DHCP Documentation](#dns-and-dhcp-documentation)
 - [NTP Documentation](#ntp-documentation)
+- [SNMP and Syslog Documentation](#snmp-and-syslog-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -42,6 +43,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - Extended ACL policy enforcement for service-based access control
 - Centralized DNS and DHCP services for user VLANs
 - Centralized NTP for consistent device timestamps across routers and switches
+- Basic SNMP and syslog monitoring validation in Packet Tracer
 
 ## Lab Files
 
@@ -58,7 +60,8 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
-| `DNS & DHCP.pkt` | Latest lab file: centralized DNS and DHCP services added to the services VLAN |
+| `DNS & DHCP.pkt` | Centralized DNS and DHCP services added to the services VLAN |
+| `SNMP & Syslog.pkt` | Latest lab file: SNMP communities on `R3` and syslog testing from `DSW3-main` to the admin server |
 
 ## Topology Snapshot
 
@@ -69,7 +72,7 @@ The current lab design includes:
 - An EtherChannel bundle between `DSW3-MAIN` and `DSW3-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
 - Dual upstream routers connected to an ISP
-- Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP), web, and DHCP servers
+- Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
 - DHCP scope delivery for user VLANs `10`, `20`, and `30`
 - IPv4 and IPv6 addressing throughout the environment
 
@@ -98,7 +101,7 @@ The current lab design includes:
 | Service | Hostname | IPv4 Address | Role |
 |---|---|---|---|
 | File Server | `file.services.local` | `192.168.40.1` | FTP service for `VLAN 10` testing with account `hr` / `hr` |
-| Admin Server | `admin.services.local` | `192.168.40.2` | DNS and NTP service for the lab |
+| Admin Server | `admin.services.local` | `192.168.40.2` | DNS, NTP, and syslog receiver for the lab |
 | Web Server | `web.services.local` | `192.168.40.3` | HTTPS service for `VLAN 20` testing |
 | DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10` through `VLAN 30` |
 
@@ -495,6 +498,57 @@ show ntp associations
 show running-config | include clock timezone|ntp server
 ```
 
+## SNMP and Syslog Documentation
+
+This section documents the basic monitoring features added in the latest Packet Tracer lab version.
+
+### SNMP Summary
+
+- `R3` is configured for SNMP community-string based monitoring.
+- The configured community strings are `ciscorw` for read/write access and `ciscoro` for read-only access.
+- Packet Tracer MIB Browser testing can be done from any host against `3.3.3.3` or `192.168.1.254` on UDP port `161`.
+
+### MIB Browser Advanced Tab Values
+
+| Setting | Value |
+|---|---|
+| Read Community | `ciscorw` |
+| Write Community | `ciscoro` |
+| SNMP Version | `v1` or `v2` |
+
+### R3 SNMP Configuration
+
+```cisco
+snmp-server community ciscorw RW
+snmp-server community ciscoro RO
+```
+
+### SNMP Test Screenshot
+
+![Admin server MIB Browser SNMP test against R3](screenshots/admin-server-snmp-test-r3.png)
+
+### Syslog Summary
+
+- Syslog is enabled only on `DSW3-main` in this lab version for testing.
+- The admin server at `192.168.40.2` is configured as the syslog receiver.
+- Trap logging is configured at the `debugging` level in Packet Tracer.
+
+### DSW3-main Syslog Configuration
+
+```cisco
+logging trap debugging
+logging 192.168.40.2
+```
+
+### Syslog Test Screenshot
+
+![Admin server syslog test showing messages from DSW3-main](screenshots/admin-server-syslog-test-dsw3-main.png)
+
+### Packet Tracer Limitations
+
+- Packet Tracer SNMP support in this lab is limited to community strings with `SNMPv1` and `SNMPv2`.
+- Packet Tracer syslog handling is simplified, and this lab uses the default `debugging` trap level for testing.
+
 ## Configuration Workflow
 
 1. Configure hostnames on routers, switches, and hosts.
@@ -511,8 +565,9 @@ show running-config | include clock timezone|ntp server
 12. Add EtherChannel for redundancy and higher throughput.
 13. Configure FHRP for resilient IPv4 default gateway services.
 14. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
-15. Apply ACL policy controls and validate source-based filtering behavior.
-16. Test failover, path selection, name resolution, and end-to-end connectivity.
+15. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
+16. Apply ACL policy controls and validate source-based filtering behavior.
+17. Test failover, path selection, name resolution, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -520,7 +575,8 @@ show running-config | include clock timezone|ntp server
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
 - In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
 - Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
-- Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the user VLANs, and the admin server providing both DNS and NTP.
+- Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the user VLANs, and the admin server providing DNS, NTP, and syslog reception.
+- Packet Tracer monitoring features (SNMP and Syslog) are intentionally simple in this lab due to limitations.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
 ### Example VLSM Workflow
@@ -589,6 +645,6 @@ As this portfolio grows, I plan to add:
 - Per-lab notes and verification outputs
 - Troubleshooting scenarios and recovery steps
 - Additional routing, security, automation/scripting and services labs as I progress to my CCNA lectures
-- Add a zip file of the latest lab file after PR merge (GitHub actions)
+- Remake this lab in EVE-NG/GNS3.
 
 ---
