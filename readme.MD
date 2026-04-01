@@ -19,6 +19,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [DNS and DHCP Documentation](#dns-and-dhcp-documentation)
 - [NTP Documentation](#ntp-documentation)
 - [SNMP and Syslog Documentation](#snmp-and-syslog-documentation)
+- [SSH Documentation](#ssh-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -44,6 +45,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - Centralized DNS and DHCP services for user VLANs
 - Centralized NTP for consistent device timestamps across routers and switches
 - Basic SNMP and syslog monitoring validation in Packet Tracer
+- Restricted SSH management access from the IT VLAN
 
 ## Lab Files
 
@@ -551,6 +553,62 @@ logging 192.168.40.2
 - SNMP configuration commands in this lab is limited to community strings with `SNMPv1` and `SNMPv2`.
 - Syslog handling is simplified, and this lab uses the limited `debugging` trap level for testing.
 
+## SSH Documentation
+
+This section documents the SSH access restriction used for device management in the lab.
+
+### SSH Summary
+
+- SSH access to the network devices is limited to the IT subnet `192.168.30.0/24`.
+- A standard ACL named `SSH_IN` is applied inbound on the VTY lines to restrict which hosts can open SSH sessions.
+- For demo and testing, only `DSW3-MAIN` and `DSW3-BACKUP` are SSH-enabled devices.
+- The local SSH test credentials are username `it` and password `ccna`.
+- This keeps management access separated from the HR and Sales user VLANs.
+
+### SSH Access ACL
+
+```cisco
+ip access-list standard SSH_IN
+ permit 192.168.30.0 0.0.0.255
+```
+
+### VTY Settings
+
+```cisco
+line vty 0 4
+ access-class SSH_IN in
+ exec-timeout 5 0
+ login local
+ transport input ssh
+!
+line vty 5 15
+ access-class SSH_IN in
+ exec-timeout 5 0
+ login local
+ transport input ssh
+```
+
+### Demo and Testing Commands
+
+Use either SSH format below from a host in the IT VLAN:
+
+```text
+ssh -l it 192.168.30.252
+ssh -l it 192.168.30.253
+ssh it@192.168.30.252
+ssh it@192.168.30.253
+```
+
+- `192.168.30.252` = `DSW3-MAIN`
+- `192.168.30.253` = `DSW3-BACKUP`
+
+### Verification Commands
+
+```cisco
+show access-lists SSH_IN
+show running-config | section line vty
+```
+
 ## Configuration Workflow
 
 1. Configure hostnames on routers, switches, and hosts.
@@ -567,9 +625,10 @@ logging 192.168.40.2
 12. Add EtherChannel for redundancy and higher throughput.
 13. Configure FHRP for resilient IPv4 default gateway services.
 14. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
-15. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
-16. Apply ACL policy controls and validate source-based filtering behavior.
-17. Test failover, path selection, name resolution, and end-to-end connectivity.
+15. Configure SSH management access restrictions.
+16. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
+17. Apply ACL policy controls and validate source-based filtering behavior.
+18. Test failover, path selection, name resolution, monitoring, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -578,6 +637,7 @@ logging 192.168.40.2
 - In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
 - Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
 - Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the user VLANs, and the admin server providing DNS, NTP, and syslog reception.
+- SSH management access is intentionally restricted to **VLAN 30 / IT** by applying a standard ACL to the VTY lines.
 - Packet Tracer monitoring features (SNMP and Syslog) are intentionally simple in this lab due to limitations.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
