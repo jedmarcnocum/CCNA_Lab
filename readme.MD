@@ -63,7 +63,8 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
 | `DNS & DHCP.pkt` | Centralized DNS and DHCP services added to the services VLAN |
-| `SNMP & Syslog.pkt` | Latest lab file: SNMP communities on `R3` and syslog testing from `DSW3-main` to the admin server |
+| `SNMP & Syslog.pkt` | SNMP communities on `R3` and syslog testing from `DSW3-main` to the admin server |
+| `SSH.pkt` | Latest lab file: SSH management access enabled on `DSW3-MAIN` and `DSW3-BACKUP` with IT VLAN restrictions |
 
 ## Topology Snapshot
 
@@ -701,12 +702,15 @@ Broadcast address: 203.0.113.7
 
 ## Next Steps
 
-As this portfolio grows, I plan to add:
+As this portfolio grows, the next features I plan to add to the current lab include:
 
-- More screenshots
-- Per-lab notes and verification outputs
-- Troubleshooting scenarios and recovery steps
-- Additional routing, security, automation/scripting and services labs as I progress to my CCNA lectures
-- Remake this lab in EVE-NG/GNS3
+- NAT, PAT, and QoS
+- Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
+- LAN and WAN architecture features such as STP/FHRP synchronization and GRE tunnels
+- Virtualization, cloud, containers, and VRF concepts
+- Wireless fundamentals, architecture, security, and configuration
+- Network automation topics such as JSON, XML, YAML, REST APIs, SDN, Ansible, Puppet, Chef, and Terraform
+- More screenshots, verification outputs, and troubleshooting scenarios
+- A future rebuild of the lab in EVE-NG or GNS3 overcoming Packet Tracer's limitations.
 
 ---
