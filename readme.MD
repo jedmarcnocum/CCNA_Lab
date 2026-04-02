@@ -247,6 +247,7 @@ This section documents the OSPF design used for dynamic routing and failover beh
 | `DSW3-BACKUP` | `2.2.2.2/32` | `2.2.2.2` |
 | `R3` | `3.3.3.3/32` | `3.3.3.3` |
 | `R4` | `4.4.4.4/32` | `4.4.4.4` |
+| `EDGE` | `5.5.5.5/32` | `5.5.5.5` |
 
 ### OSPF Design Summary
 
@@ -768,8 +769,7 @@ Next network: 203.0.113.12
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
-- NAT, PAT, and QoS
-- Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
+-QoS, Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
 - LAN and WAN architecture features such as STP/FHRP synchronization and GRE tunnels
 - Virtualization, cloud, containers, and VRF concepts
 - Wireless fundamentals, architecture, security, and configuration
