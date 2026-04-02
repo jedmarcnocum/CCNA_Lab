@@ -15,6 +15,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [PVST Documentation](#pvst-documentation)
 - [EtherChannel Documentation](#etherchannel-documentation)
 - [OSPF Documentation](#ospf-documentation)
+- [NAT Documentation](#nat-documentation)
 - [Extended ACL Documentation](#extended-acl-documentation)
 - [DNS and DHCP Documentation](#dns-and-dhcp-documentation)
 - [NTP Documentation](#ntp-documentation)
@@ -40,7 +41,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - OSPF routing and failover path behavior
 - FHRP for resilient IPv4 default gateways
 - IPv4 and IPv6 dual-stack addressing
-- Static routing and WAN edge connectivity
+- Static routing, NAT/PAT, and WAN edge connectivity
 - Extended ACL policy enforcement for service-based access control
 - Centralized DNS and DHCP services for user VLANs
 - Centralized NTP for consistent device timestamps across routers and switches
@@ -54,17 +55,18 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | Lab File | Main Focus |
 |---|---|
 | `VTP.pkt` | VLAN propagation and switch domain setup |
-| `VLAN - L2 Switch (ROAS) + Subinterfaces.pkt` | Router-on-a-stick and inter-VLAN routing |
-| `VLAN - L3 Switch (P2P) + SVI.pkt` | Layer 3 switching with SVIs and routed links |
-| `RSTP with portfast, bpduguard, root guard.pkt` | Spanning-tree protection features |
+| `VLAN (ROAS).pkt` | Router-on-a-stick and inter-VLAN routing |
+| `VLAN (P2P).pkt` | Layer 3 switching with SVIs and routed links |
+| `RSTP.pkt` | Spanning-tree protection features |
 | `Etherchannel.pkt` | Aggregated uplinks and redundancy |
-| `FHRP (Active, Standby).pkt` | IPv4 default gateway redundancy |
-| `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
+| `FHRP.pkt` | IPv4 default gateway redundancy |
+| `OSPF.pkt` | Dynamic routing and path preference |
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
 | `DNS & DHCP.pkt` | Centralized DNS and DHCP services added to the services VLAN |
-| `SNMP & Syslog.pkt` | SNMP communities on `R3` and syslog testing from `DSW3-main` to the admin server |
-| `SSH.pkt` | Latest lab file: SSH management access enabled on `DSW3-MAIN` and `DSW3-BACKUP` with IT VLAN restrictions |
+| `SNMP & Syslog.pkt` | SNMP communities and syslog testing to the admin server |
+| `NAT.pkt` | `EDGE` PAT overload for inside local networks and internet access |
+| `SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
 
 ## Topology Snapshot
 
@@ -74,7 +76,8 @@ The current lab design includes:
 - Two distribution / multilayer switches acting as primary and backup gateways
 - An EtherChannel bundle between `DSW3-MAIN` and `DSW3-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
-- Dual upstream routers connected to an ISP
+- Dual upstream routers connected to the `EDGE` internet router
+- Dynamic NAT overload (PAT) on `EDGE` for inside local addresses reaching outside networks
 - Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
 - DHCP scope delivery for user VLANs `10`, `20`, and `30`
 - IPv4 and IPv6 addressing throughout the environment
@@ -124,10 +127,11 @@ Replace `x` with the VLAN number such as `10`, `20`, `30`, or `40`.
 
 ### Point-to-Point WAN Links
 
-| Link | IPv4 Subnet | Router Address | ISP Address | IPv6 Subnet | Router IPv6 | ISP IPv6 |
+| Link | IPv4 Subnet | Internal Router Address | EDGE / Next-Hop Address | IPv6 Subnet | Internal Router IPv6 | EDGE IPv6 |
 |---|---|---|---|---|---|---|
-| R3 to ISP | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
-| R4 to ISP | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
+| R3 to EDGE | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
+| R4 to EDGE | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
+| EDGE to Internet | `203.0.113.8/30` | `203.0.113.9` | `203.0.113.10` | Not used | Not used | Not used |
 
 ## VTP Documentation
 
@@ -243,7 +247,7 @@ This section documents the OSPF design used for dynamic routing and failover beh
 | `DSW3-BACKUP` | `2.2.2.2/32` | `2.2.2.2` |
 | `R3` | `3.3.3.3/32` | `3.3.3.3` |
 | `R4` | `4.4.4.4/32` | `4.4.4.4` |
-| `ISP` | `8.8.8.8/32` | `8.8.8.8` |
+| `EDGE` | `5.5.5.5/32` | `5.5.5.5` |
 
 ### OSPF Design Summary
 
@@ -252,6 +256,7 @@ This section documents the OSPF design used for dynamic routing and failover beh
 - On the multilayer switches, VLAN SVIs are advertised through `network` statements with wildcard masks under the OSPF process.
 - Physical routed interfaces are enabled individually under the interface with `ip ospf 1 area 0`.
 - OSPF is used to advertise internal routed paths and upstream connectivity across the lab.
+- `EDGE` originates the default route into OSPF so the internal routers learn outside reachability.
 - The topology is designed so path preference and failover can be observed when the primary route changes or becomes unavailable.
 
 ### Example Loopback and Router ID Configuration
@@ -306,14 +311,13 @@ router ospf 1
  router-id 4.4.4.4
 ```
 
-#### ISP
+#### EDGE
 
 ```cisco
-interface loopback0
- ip address 8.8.8.8 255.255.255.255
+ip route 0.0.0.0 0.0.0.0 203.0.113.10
 !
 router ospf 1
- router-id 8.8.8.8
+ default-information originate
 ```
 
 ### Routed Interface OSPF Enablement
@@ -329,6 +333,58 @@ interface <routed-uplink>
 show ip ospf neighbor
 show ip route ospf
 show ip ospf interface brief
+show ip protocols
+```
+
+## NAT Documentation
+
+This section documents the `EDGE` router configuration used to provide outside connectivity for the internal lab networks.
+
+### NAT Summary
+
+- `EDGE` is the internet-edge router for the lab.
+- Dynamic NAT overload (PAT) is used so inside local addresses can share the public outside interface when reaching external networks.
+- The NAT ACL permits the internal `192.168.0.0/16` address space.
+- Internal-facing interfaces on `EDGE` are configured as `ip nat inside`, and the internet-facing interface is configured as `ip nat outside`.
+- `EDGE` uses a default route to `203.0.113.10` and advertises that default route into OSPF.
+- Hosts in the internal VLANs can reach external destinations such as the `8.8.8.8` internet server through PAT.
+
+### NAT ACL on EDGE
+
+```cisco
+ip access-list standard NAT_IN
+ permit 192.168.0.0 0.0.255.255
+```
+
+### Example PAT and Routing Configuration
+
+```cisco
+interface <inside-interface>
+ ip nat inside
+!
+interface <outside-interface>
+ ip nat outside
+!
+ip nat inside source list NAT_IN interface <outside-interface> overload
+ip route 0.0.0.0 0.0.0.0 203.0.113.10
+!
+router ospf 1
+ default-information originate
+```
+
+### NAT Test
+
+The screenshot below shows `EDGE` building PAT translations while an inside host reaches the `8.8.8.8` internet server.
+
+![EDGE NAT translation table showing PAT entries for inside host traffic to 8.8.8.8](screenshots/nat-test.png)
+
+### Verification Commands
+
+```cisco
+show access-lists NAT_IN
+show ip nat translations
+show ip nat statistics
+show ip route
 show ip protocols
 ```
 
@@ -683,7 +739,7 @@ Usable range: 192.168.40.1 - 192.168.40.254
 Broadcast address: 192.168.40.255
 Gateway: 192.168.40.254
 
-R3-ISP P2P
+R3-EDGE P2P
 Host bits: 2^2 = 4
 Mask: 255.255.255.252
 Network address: 203.0.113.0/30
@@ -691,21 +747,29 @@ Prefix: /30
 Usable range: 203.0.113.1 - 203.0.113.2
 Broadcast address: 203.0.113.3
 
-R4-ISP P2P
+R4-EDGE P2P
 Host bits: 2^2 = 4
 Mask: 255.255.255.252
 Network address: 203.0.113.4/30
 Prefix: /30
 Usable range: 203.0.113.5 - 203.0.113.6
 Broadcast address: 203.0.113.7
+
+EDGE-INTERNET
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 203.0.113.8/30
+Prefix: /30
+Usable range: 203.0.113.9 - 203.0.113.10
+Broadcast: 203.0.113.11
+Next network: 203.0.113.12
 ```
 
 ## Next Steps
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
-- NAT, PAT, and QoS
-- Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
+-QoS, Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
 - LAN and WAN architecture features such as STP/FHRP synchronization and GRE tunnels
 - Virtualization, cloud, containers, and VRF concepts
 - Wireless fundamentals, architecture, security, and configuration
