@@ -54,17 +54,18 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | Lab File | Main Focus |
 |---|---|
 | `VTP.pkt` | VLAN propagation and switch domain setup |
-| `VLAN - L2 Switch (ROAS) + Subinterfaces.pkt` | Router-on-a-stick and inter-VLAN routing |
-| `VLAN - L3 Switch (P2P) + SVI.pkt` | Layer 3 switching with SVIs and routed links |
-| `RSTP with portfast, bpduguard, root guard.pkt` | Spanning-tree protection features |
+| `VLAN (ROAS).pkt` | Router-on-a-stick and inter-VLAN routing |
+| `VLAN (P2P).pkt` | Layer 3 switching with SVIs and routed links |
+| `RSTP.pkt` | Spanning-tree protection features |
 | `Etherchannel.pkt` | Aggregated uplinks and redundancy |
-| `FHRP (Active, Standby).pkt` | IPv4 default gateway redundancy |
-| `OSPF (cost changed going to backup router).pkt` | Dynamic routing and path preference |
+| `FHRP.pkt` | IPv4 default gateway redundancy |
+| `OSPF.pkt` | Dynamic routing and path preference |
 | `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
 | `DNS & DHCP.pkt` | Centralized DNS and DHCP services added to the services VLAN |
-| `SNMP & Syslog.pkt` | SNMP communities on `R3` and syslog testing from `DSW3-main` to the admin server |
-| `SSH.pkt` | Latest lab file: SSH management access enabled on `DSW3-MAIN` and `DSW3-BACKUP` with IT VLAN restrictions |
+| `SNMP & Syslog.pkt` | SNMP communities and syslog testing to the admin server |
+| `NAT.pkt` | NAT and PAT configuration |
+| `SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
 
 ## Topology Snapshot
 

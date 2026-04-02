@@ -37,9 +37,29 @@ Broadcast address: 192.168.5.223
 Next network: 192.168.5.224
 
 
-R1-R2 P2P: 2 hosts (/30)
+R1 P2P: 2 hosts (/30)
+Host bits: 2^2 = 4
+Mask: 255.255.255.252 
+Network address: 203.0.113.0/30
+Prefix: /30
+Usable range: 203.0.113.1 - 203.0.113.2
+Broadcast: 203.0.113.3
+Next network: 203.0.113.4
+
+R2 P2P: 2 hosts (/30)
 Host bits: 2^2 = 4
 Mask: 255.255.255.252
-Network address: 192.168.5.224/30
+Network address: 203.0.113.4/30
 Prefix: /30
-Usable range: 192.168.5.225 - 192.168.5.226
+Usable range: 203.0.113.5 - 203.0.113.6
+Broadcast: 203.0.113.7
+Next network: 203.0.113.8
+
+ISP-INTERNET: 2 hosts (/30)
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 203.0.113.8/30
+Prefix: /30
+Usable range: 203.0.113.9 - 203.0.113.10
+Broadcast: 203.0.113.11
+Next network: 203.0.113.12
