@@ -21,6 +21,8 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [NTP Documentation](#ntp-documentation)
 - [SNMP and Syslog Documentation](#snmp-and-syslog-documentation)
 - [SSH Documentation](#ssh-documentation)
+- [VoIP Documentation](#voip-documentation)
+- [QoS Documentation](#qos-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -47,6 +49,8 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - Centralized NTP for consistent device timestamps across routers and switches
 - Basic SNMP and syslog monitoring validation in Packet Tracer
 - Restricted SSH management access from the IT VLAN
+- VoIP phone access ports with a separate voice VLAN
+- QoS classification, DSCP EF marking, trust boundaries, and strict priority queueing for voice traffic
 
 ## Lab Files
 
@@ -67,6 +71,8 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `SNMP & Syslog.pkt` | SNMP communities and syslog testing to the admin server |
 | `NAT.pkt` | `EDGE` PAT overload for inside local networks and internet access |
 | `SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
+| `QoS - VLAN100.pkt` | Initial voice VLAN 100 build used to prepare VoIP traffic for QoS testing |
+| `QoS.pkt` | Latest VoIP and QoS lab with preserved DSCP markings and priority queue validation |
 
 ## Topology Snapshot
 
@@ -80,6 +86,8 @@ The current lab design includes:
 - Dynamic NAT overload (PAT) on `EDGE` for inside local addresses reaching outside networks
 - Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
 - DHCP scope delivery for user VLANs `10`, `20`, and `30`
+- Cisco IP phones added at the access layer with a dedicated `VLAN 100` voice segment
+- QoS policy testing across redundant routed paths through `DSW3-MAIN`, `DSW3-BACKUP`, `CR3`, `CR4`, and `EDGE`
 - IPv4 and IPv6 addressing throughout the environment
 
 ## Addressing Plan
@@ -110,6 +118,10 @@ The current lab design includes:
 | Admin Server | `admin.services.local` | `192.168.40.2` | DNS, NTP, and syslog receiver for the lab |
 | Web Server | `web.services.local` | `192.168.40.3` | HTTPS service for `VLAN 20` testing |
 | DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10` through `VLAN 30` |
+
+### Voice VLAN Note
+
+The later VoIP and QoS lab stages add a dedicated `VLAN 100` voice segment for the IP phones connected to the access ports. The PCs remain in their original departmental data VLANs while the phones tag voice traffic separately for call processing and QoS validation.
 
 ### FHRP / Gateway Pattern
 
@@ -666,6 +678,166 @@ show access-lists SSH_IN
 show running-config | section line vty
 ```
 
+## VoIP Documentation
+
+This section documents the VoIP baseline added in the later Packet Tracer lab versions.
+
+### VoIP Summary
+
+- Four IP phones, `PH1` through `PH4`, are added to the access layer for call testing.
+- The phones use a dedicated `VLAN 100` voice segment while the attached PCs stay in their existing data VLANs.
+- Both `DSW3-MAIN` and `DSW3-BACKUP` carry the voice VLAN so phone reachability survives the redundant distribution design.
+- The telephony setup is intentionally lightweight for CCNA practice: register the phones, assign extensions, and generate voice traffic that can be classified by the QoS policy.
+
+### Access Port Pattern
+
+Apply the following pattern on user-facing access ports that connect an IP phone with a PC behind it:
+
+```cisco
+interface <phone-access-port>
+ switchport mode access
+ switchport access vlan <10|20|30>
+ switchport voice vlan 100
+ spanning-tree portfast
+```
+
+### Example CME / Telephony Baseline
+
+The current Packet Tracer call-processing baseline on `R3` uses the following CME values:
+
+```cisco
+telephony-service
+ max-ephones 10
+ max-dn 10
+ ip source-address 3.3.3.3 port 2000
+ auto assign 1 to 10
+!
+ephone-dn 1
+ number 1001
+!
+ephone-dn 2
+ number 1002
+!
+ephone-dn 3
+ number 1003
+!
+ephone-dn 4
+ number 1004
+!
+ephone 1
+ device-security-mode none
+ mac-address 00E0.B000.2EA6
+ type 7960
+ button 1:1
+!
+ephone 2
+ device-security-mode none
+ mac-address 0001.4345.1632
+ type 7960
+ button 1:2
+!
+ephone 3
+ device-security-mode none
+ mac-address 0002.4A98.228C
+ type 7960
+ button 1:3
+!
+ephone 4
+ device-security-mode none
+ mac-address 00D0.BC55.DCBE
+ type 7960
+ button 1:4
+```
+
+### Verification Commands
+
+```cisco
+show vlan brief
+show interfaces switchport
+show ephone registered
+show telephony-service ephone
+```
+
+## QoS Documentation
+
+This section documents the voice-priority QoS policy used in the latest `QoS.pkt` lab.
+
+### QoS Summary
+
+- Voice traffic is classified with ACL `VOICE-TRAFFIC` and class-map `VOICE`.
+- Policy-map `MARK-VOICE` sets matched traffic to `dscp ef` and places it in the low-latency queue with `priority percent 30`.
+- The latest QoS build preserves voice markings across all routed paths tested through `DSW3-MAIN`, `DSW3-BACKUP`, `CR3`, `CR4`, and `EDGE`.
+- `DSW3-MAIN` acts as the switched trust boundary, while the routed devices enforce priority queueing on the egress path.
+- Because Packet Tracer QoS behavior is limited, the lab uses ACL-based voice matching as a practical workaround for consistent voice classification.
+
+### Example Classification and Marking Policy
+
+The current QoS policy objects visible in the lab are named `VOICE-TRAFFIC`, `VOICE`, and `MARK-VOICE`:
+
+```cisco
+ip access-list extended VOICE-TRAFFIC
+ 10 permit ip 192.168.100.0 0.0.0.255 any
+ 20 permit ip any 192.168.100.0 0.0.0.255
+!
+class-map match-any VOICE
+ match access-group name VOICE-TRAFFIC
+!
+policy-map MARK-VOICE
+ class VOICE
+  set dscp ef
+  priority percent 30
+```
+
+### Trust and Service-Policy Pattern
+
+```cisco
+interface <trusted-switch-uplink>
+ mls qos trust dscp
+!
+interface <routed-egress-interface>
+ service-policy output MARK-VOICE
+```
+
+### QoS Testing
+
+The screenshot below shows `CR3` verifying the live policy on `GigabitEthernet0/1`. The `VOICE` class has matched traffic, the packets are being marked as `dscp ef`, and the strict-priority queue is active with `0` drops during the test.
+
+![CR3 QoS policy verification showing matched voice traffic, DSCP EF marking, and strict priority queueing on GigabitEthernet0/1](screenshots/qos-test.png)
+
+### Verification Commands
+
+```cisco
+show access-lists VOICE-TRAFFIC
+show class-map VOICE
+show policy-map MARK-VOICE
+show policy-map interface g0/1
+show mls qos interface <trusted-switch-uplink>
+```
+
+### Packet Tracer Note
+
+Packet Tracer does not always simulate congestion or best-effort packet drops realistically, even when multiple traffic generators are active. In this lab, the most reliable QoS validation comes from verifying DSCP preservation, class counters, and strict-priority queue statistics rather than expecting dramatic packet loss in competing traffic classes.
+
+Packet Tracer can also fail to retain the `service-policy output MARK-VOICE` attachment on routed interfaces after the lab is closed and reopened, even though the QoS objects themselves still exist in the saved configuration. If that happens, re-apply the policy to the routed egress interfaces below after every Packet Tracer restart:
+
+```cisco
+CR3
+interface g0/0
+ service-policy output MARK-VOICE
+interface g0/1
+ service-policy output MARK-VOICE
+!
+CR4
+interface g0/1
+ service-policy output MARK-VOICE
+!
+EDGE
+interface g0/0
+ service-policy output MARK-VOICE
+interface g0/1
+ service-policy output MARK-VOICE
+```
+
 ## Configuration Workflow
 
 1. Configure hostnames on routers, switches, and hosts.
@@ -677,15 +849,17 @@ show running-config | section line vty
 7. Enable RSTP and harden the edge with PortFast and BPDU Guard.
 8. Create SVIs for inter-VLAN routing.
 9. Verify VLAN reachability and gateway connectivity.
-10. Configure router interfaces and upstream connectivity.
-11. Deploy OSPF and validate adjacency plus route exchange.
-12. Add EtherChannel for redundancy and higher throughput.
-13. Configure FHRP for resilient IPv4 default gateway services.
-14. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
-15. Configure SSH management access restrictions.
-16. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
-17. Apply ACL policy controls and validate source-based filtering behavior.
-18. Test failover, path selection, name resolution, monitoring, and end-to-end connectivity.
+10. Add the voice VLAN on phone-facing access ports and verify IP phone registration.
+11. Configure router interfaces and upstream connectivity.
+12. Deploy OSPF and validate adjacency plus route exchange.
+13. Add EtherChannel for redundancy and higher throughput.
+14. Configure FHRP for resilient IPv4 default gateway services.
+15. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
+16. Configure SSH management access restrictions.
+17. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
+18. Apply ACL policy controls and validate source-based filtering behavior.
+19. Apply QoS trust, classification, marking, and priority queueing for voice traffic.
+20. Test failover, path selection, name resolution, monitoring, VoIP behavior, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -695,6 +869,8 @@ show running-config | section line vty
 - Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
 - Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the user VLANs, and the admin server providing DNS, NTP, and syslog reception.
 - SSH management access is intentionally restricted to **VLAN 30 / IT** by applying a standard ACL to the VTY lines.
+- Later lab versions add **IP phones on a separate voice VLAN** so the same topology can be used for both VoIP and QoS validation.
+- Packet Tracer QoS behavior is limited, so **ACL-based voice classification plus policy counters** are used to confirm DSCP marking and strict-priority treatment.
 - Packet Tracer monitoring features (SNMP and Syslog) are intentionally simple in this lab due to limitations.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
@@ -769,7 +945,7 @@ Next network: 203.0.113.12
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
--QoS, Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
+- Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
 - LAN and WAN architecture features such as STP/FHRP synchronization and GRE tunnels
 - Virtualization, cloud, containers, and VRF concepts
 - Wireless fundamentals, architecture, security, and configuration
