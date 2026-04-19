@@ -87,7 +87,7 @@ The current lab design includes:
 - Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
 - DHCP scope delivery for user VLANs `10`, `20`, and `30`
 - Cisco IP phones added at the access layer with a dedicated `VLAN 100` voice segment
-- QoS policy testing across redundant routed paths through `DSW3-MAIN`, `DSW3-BACKUP`, `CR3`, `CR4`, and `EDGE`
+- QoS policy testing with DSCP marking at `ASW1`, DSCP trust at `DSW3-MAIN` and `DSW3-BACKUP`, and egress priority queueing on `CR3`, `CR4`, and `EDGE`
 - IPv4 and IPv6 addressing throughout the environment
 
 ## Addressing Plan
@@ -766,8 +766,7 @@ This section documents the voice-priority QoS policy used in the latest `QoS.pkt
 
 - Voice traffic is classified with ACL `VOICE-TRAFFIC` and class-map `VOICE`.
 - Policy-map `MARK-VOICE` sets matched traffic to `dscp ef` and places it in the low-latency queue with `priority percent 30`.
-- The latest QoS build preserves voice markings across all routed paths tested through `DSW3-MAIN`, `DSW3-BACKUP`, `CR3`, `CR4`, and `EDGE`.
-- `DSW3-MAIN` acts as the switched trust boundary, while the routed devices enforce priority queueing on the egress path.
+- In the intended end-to-end design, `ASW1` marks voice traffic with DSCP, `DSW3-MAIN` and `DSW3-BACKUP` trust and preserve those markings, and routed devices such as `CR3`, `CR4`, and `EDGE` enforce priority queueing on egress.
 - Because Packet Tracer QoS behavior is limited, the lab uses ACL-based voice matching as a practical workaround for consistent voice classification.
 
 ### Example Classification and Marking Policy
@@ -788,17 +787,9 @@ policy-map MARK-VOICE
   priority percent 30
 ```
 
-### Trust and Service-Policy Pattern
-
-```cisco
-interface <trusted-switch-uplink>
- mls qos trust dscp
-!
-interface <routed-egress-interface>
- service-policy output MARK-VOICE
-```
-
 ### QoS Testing
+
+For the active Packet Tracer QoS demo, the test call is placed between `PH1` (`1001`) and `PH3` (`1003`), with both phones connected to `ASW1`. To generate traffic for validation, place a call from `PH1` to `PH3` or from `PH3` to `PH1`, then verify that the DSCP markings and QoS counters increment as expected.
 
 The screenshot below shows `CR3` verifying the live policy on `GigabitEthernet0/1`. The `VOICE` class has matched traffic, the packets are being marked as `dscp ef`, and the strict-priority queue is active with `0` drops during the test.
 
@@ -818,9 +809,18 @@ show mls qos interface <trusted-switch-uplink>
 
 Packet Tracer does not always simulate congestion or best-effort packet drops realistically, even when multiple traffic generators are active. In this lab, the most reliable QoS validation comes from verifying DSCP preservation, class counters, and strict-priority queue statistics rather than expecting dramatic packet loss in competing traffic classes.
 
-Packet Tracer can also fail to retain the `service-policy output MARK-VOICE` attachment on routed interfaces after the lab is closed and reopened, even though the QoS objects themselves still exist in the saved configuration. If that happens, re-apply the policy to the routed egress interfaces below after every Packet Tracer restart:
+Packet Tracer can also fail to retain QoS-related configuration after the lab is closed and reopened. Because of that, I decided to keep the active QoS demo scoped to `ASW1`, with `PH1` on `G1/0/1` and `PH3` on `G1/0/2`, so marking, trust, preservation, and queueing can be demonstrated more simply. This also makes re-applying the configuration far less tedious than rebuilding the same QoS setup across every access switch after each restart.
+
+If QoS is not working, markings aren't preserved due to configs not being retained on Packet Tracer, reapply the config on the following:
+
+Apply the missing input policy on both phone-facing access ports on `ASW1`:
 
 ```cisco
+ASW1
+interface g1/0/1
+ service-policy input MARK-VOICE
+interface g1/0/2
+ service-policy input MARK-VOICE
 CR3
 interface g0/0
  service-policy output MARK-VOICE
