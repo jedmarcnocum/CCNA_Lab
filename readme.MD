@@ -99,7 +99,7 @@ The current lab design includes:
 | 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::252` (DSW3-main), `2001:DB8:20::253` (DSW3-backup) |
 | 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::252` (DSW3-main), `2001:DB8:30::253` (DSW3-backup) |
 | 40 | Services | `192.168.40.0/24` | `192.168.40.254` | `2001:DB8:40::/64` | `2001:DB8:40::252` (DSW3-main), `2001:DB8:40::253` (DSW3-backup) |
-| 100 | Voice | `192.168.100.0/24` | `192.168.100.254` | `2001:DB8:100::/64` | `2001:DB8:100::252` (DSW3-main), `2001:DB8:100::253` (DSW3-backup) |
+| 100 | Voice | `192.168.100.0/24` | `192.168.100.254` | Not configured in this lab | Not configured in this lab |
 
 ### Example End-Host Addressing
 
@@ -109,7 +109,7 @@ The current lab design includes:
 | 20 | `192.168.20.1` | `2001:DB8:20::1` |
 | 30 | `192.168.30.1` | `2001:DB8:30::1` |
 | 40 | `192.168.40.1` | `2001:DB8:40::1` |
-| 100 | `192.168.100.1` | `2001:DB8:100::1` |
+| 100 | `192.168.100.1` | Not used |
 
 ### Services VLAN Infrastructure
 
@@ -685,7 +685,7 @@ This section documents the VoIP baseline used in the current latest Packet Trace
 
 - Four IP phones, `PH1` through `PH4`, are added to the access layer for call testing.
 - The phones use a dedicated `VLAN 100` voice segment while the attached PCs stay in their existing data VLANs.
-- The voice network uses `192.168.100.0/24` for IPv4 and `2001:DB8:100::/64` for IPv6.
+- The voice network uses `192.168.100.0/24` for IPv4.
 - Both `DSW3-MAIN` and `DSW3-BACKUP` carry the voice VLAN so phone reachability survives the redundant distribution design.
 - The telephony setup is intentionally lightweight for CCNA practice: register the phones, assign extensions, and generate voice traffic that can be classified by the QoS policy.
 
