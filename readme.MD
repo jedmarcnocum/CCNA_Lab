@@ -21,6 +21,8 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [NTP Documentation](#ntp-documentation)
 - [SNMP and Syslog Documentation](#snmp-and-syslog-documentation)
 - [SSH Documentation](#ssh-documentation)
+- [VoIP Documentation](#voip-documentation)
+- [QoS Documentation](#qos-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -43,14 +45,16 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - IPv4 and IPv6 dual-stack addressing
 - Static routing, NAT/PAT, and WAN edge connectivity
 - Extended ACL policy enforcement for service-based access control
-- Centralized DNS and DHCP services for user VLANs
+- Centralized DNS and DHCP services for user and voice VLANs
 - Centralized NTP for consistent device timestamps across routers and switches
 - Basic SNMP and syslog monitoring validation in Packet Tracer
 - Restricted SSH management access from the IT VLAN
+- VoIP phone access ports with a separate voice VLAN
+- QoS classification, DSCP EF marking, trust boundaries, and strict priority queueing for voice traffic
 
 ## Lab Files
 
-These Packet Tracer labs show the progression of the topology and the topics covered:
+These Packet Tracer labs show the progression of the topology and the topics covered. The latest lab file in the series is `QoS.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
@@ -67,19 +71,22 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `SNMP & Syslog.pkt` | SNMP communities and syslog testing to the admin server |
 | `NAT.pkt` | `EDGE` PAT overload for inside local networks and internet access |
 | `SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
+| `QoS.pkt` | Latest VoIP and QoS lab with preserved DSCP markings and priority queue validation |
 
 ## Topology Snapshot
 
 The current lab design includes:
 
-- Four VLANs: HR, Sales, IT, and Services
+- Five VLANs: HR, Sales, IT, Services, and Voice
 - Two distribution / multilayer switches acting as primary and backup gateways
 - An EtherChannel bundle between `DSW3-MAIN` and `DSW3-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
 - Dual upstream routers connected to the `EDGE` internet router
 - Dynamic NAT overload (PAT) on `EDGE` for inside local addresses reaching outside networks
 - Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
-- DHCP scope delivery for user VLANs `10`, `20`, and `30`
+- DHCP scope delivery for data VLANs `10`, `20`, and `30`, plus the voice VLAN `100`
+- Cisco IP phones added at the access layer with a dedicated `VLAN 100` voice segment
+- QoS policy testing with DSCP marking at `ASW1`, DSCP trust at `DSW3-MAIN` and `DSW3-BACKUP`, and egress priority queueing on routed devices such as `CR3`, `CR4`, and `EDGE`
 - IPv4 and IPv6 addressing throughout the environment
 
 ## Addressing Plan
@@ -92,6 +99,7 @@ The current lab design includes:
 | 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::252` (DSW3-main), `2001:DB8:20::253` (DSW3-backup) |
 | 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::252` (DSW3-main), `2001:DB8:30::253` (DSW3-backup) |
 | 40 | Services | `192.168.40.0/24` | `192.168.40.254` | `2001:DB8:40::/64` | `2001:DB8:40::252` (DSW3-main), `2001:DB8:40::253` (DSW3-backup) |
+| 100 | Voice | `192.168.100.0/24` | `192.168.100.254` | Not configured in this lab | Not configured in this lab |
 
 ### Example End-Host Addressing
 
@@ -101,6 +109,7 @@ The current lab design includes:
 | 20 | `192.168.20.1` | `2001:DB8:20::1` |
 | 30 | `192.168.30.1` | `2001:DB8:30::1` |
 | 40 | `192.168.40.1` | `2001:DB8:40::1` |
+| 100 | `192.168.100.1` | Not used |
 
 ### Services VLAN Infrastructure
 
@@ -109,7 +118,8 @@ The current lab design includes:
 | File Server | `file.services.local` | `192.168.40.1` | FTP service for `VLAN 10` testing with account `hr` / `hr` |
 | Admin Server | `admin.services.local` | `192.168.40.2` | DNS, NTP, and syslog receiver for the lab |
 | Web Server | `web.services.local` | `192.168.40.3` | HTTPS service for `VLAN 20` testing |
-| DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10` through `VLAN 30` |
+| DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10`, `20`, `30`, and `100` |
+
 
 ### FHRP / Gateway Pattern
 
@@ -123,7 +133,7 @@ For this Packet Tracer lab, FHRP is used for IPv4 only. IPv6 does not use a virt
 | Backup multilayer switch SVI | `192.168.x.253` | `2001:DB8:x::253` |
 | Virtual default gateway | `192.168.x.254` | Not used in this Packet Tracer IPv6 lab |
 
-Replace `x` with the VLAN number such as `10`, `20`, `30`, or `40`.
+Replace `x` with the VLAN number such as `10`, `20`, `30`, `40`, or `100`.
 
 ### Point-to-Point WAN Links
 
@@ -184,14 +194,14 @@ This section documents the PVST configuration used to stabilize Layer 2 paths an
 
 ```cisco
 spanning-tree mode pvst
-spanning-tree vlan 1,10,20,30,40 root primary
+spanning-tree vlan 1,10,20,30,40,100 root primary
 ```
 
 #### DSW3-BACKUP
 
 ```cisco
 spanning-tree mode pvst
-spanning-tree vlan 1,10,20,30,40 root secondary
+spanning-tree vlan 1,10,20,30,40,100 root secondary
 ```
 
 #### Access Switch Edge Protection
@@ -517,8 +527,8 @@ This section documents the centralized services added in the latest Packet Trace
 
 ### DHCP Summary
 
-- A dedicated DHCP server at `192.168.40.4` provides address pools for `VLAN 10`, `VLAN 20`, and `VLAN 30`.
-- Addresses `.250` through `.254` are excluded in each user VLAN so they remain available for static assignments such as gateways, routers, and servers.
+- A dedicated DHCP server at `192.168.40.4` provides address pools for `VLAN 10`, `VLAN 20`, `VLAN 30`, and `VLAN 100`.
+- Addresses `.250` through `.254` are excluded in each VLAN so they remain available for static assignments such as gateways, routers, and servers.
 - Services in `VLAN 40` continue to use static addressing.
 
 ### DHCP Excluded Addresses
@@ -527,6 +537,7 @@ This section documents the centralized services added in the latest Packet Trace
 ip dhcp excluded-address 192.168.10.250 192.168.10.254
 ip dhcp excluded-address 192.168.20.250 192.168.20.254
 ip dhcp excluded-address 192.168.30.250 192.168.30.254
+ip dhcp excluded-address 192.168.100.250 192.168.100.254
 ```
 
 ## NTP Documentation
@@ -666,6 +677,165 @@ show access-lists SSH_IN
 show running-config | section line vty
 ```
 
+## VoIP Documentation
+
+This section documents the VoIP baseline used in the current latest Packet Tracer lab version.
+
+### VoIP Summary
+
+- Four IP phones, `PH1` through `PH4`, are added to the access layer for call testing.
+- The phones use a dedicated `VLAN 100` voice segment while the attached PCs stay in their existing data VLANs.
+- The voice network uses `192.168.100.0/24` for IPv4.
+- Both `DSW3-MAIN` and `DSW3-BACKUP` carry the voice VLAN so phone reachability survives the redundant distribution design.
+- The telephony setup is intentionally lightweight for CCNA practice: register the phones, assign extensions, and generate voice traffic that can be classified by the QoS policy.
+
+### Access Port Pattern
+
+Apply the following pattern on user-facing access ports that connect an IP phone with a PC behind it:
+
+```cisco
+interface <phone-access-port>
+ switchport mode access
+ switchport access vlan <10|20|30>
+ switchport voice vlan 100
+ spanning-tree portfast
+```
+
+### Example CME / Telephony Baseline
+
+The current Packet Tracer call-processing baseline on `R3` uses the following CME values:
+
+```cisco
+telephony-service
+ max-ephones 10
+ max-dn 10
+ ip source-address 3.3.3.3 port 2000
+ auto assign 1 to 10
+!
+ephone-dn 1
+ number 1001
+!
+ephone-dn 2
+ number 1002
+!
+ephone-dn 3
+ number 1003
+!
+ephone-dn 4
+ number 1004
+!
+ephone 1
+ device-security-mode none
+ mac-address 00E0.B000.2EA6
+ type 7960
+ button 1:1
+!
+ephone 2
+ device-security-mode none
+ mac-address 0001.4345.1632
+ type 7960
+ button 1:2
+!
+ephone 3
+ device-security-mode none
+ mac-address 0002.4A98.228C
+ type 7960
+ button 1:3
+!
+ephone 4
+ device-security-mode none
+ mac-address 00D0.BC55.DCBE
+ type 7960
+ button 1:4
+```
+
+### Verification Commands
+
+```cisco
+show vlan brief
+show interfaces switchport
+show ephone registered
+show telephony-service ephone
+```
+
+## QoS Documentation
+
+This section documents the voice-priority QoS policy used in the latest `QoS.pkt` lab.
+
+### QoS Summary
+
+- Voice traffic is classified with ACL `VOICE-TRAFFIC` and class-map `VOICE`.
+- Policy-map `MARK-VOICE` sets matched traffic to `dscp ef` and places it in the low-latency queue with `priority percent 30`.
+- In the intended end-to-end design, `ASW1` marks voice traffic with DSCP, `DSW3-MAIN` and `DSW3-BACKUP` trust and preserve those markings, and routed devices such as `CR3`, `CR4`, and `EDGE` enforce priority queueing on egress.
+- Because Packet Tracer QoS behavior is limited, the lab uses ACL-based voice matching as a practical workaround for consistent voice classification.
+
+### Example Classification and Marking Policy
+
+The current QoS policy objects visible in the lab are named `VOICE-TRAFFIC`, `VOICE`, and `MARK-VOICE`:
+
+```cisco
+ip access-list extended VOICE-TRAFFIC
+ 10 permit ip 192.168.100.0 0.0.0.255 any
+ 20 permit ip any 192.168.100.0 0.0.0.255
+!
+class-map match-any VOICE
+ match access-group name VOICE-TRAFFIC
+!
+policy-map MARK-VOICE
+ class VOICE
+  set dscp ef
+  priority percent 30
+```
+
+### QoS Testing
+
+For the active Packet Tracer QoS demo, the test call is placed between `PH1` (`1001`) and `PH3` (`1003`), with both phones connected to `ASW1`. To generate traffic for validation, place a call from `PH1` to `PH3` or from `PH3` to `PH1`, then verify that the DSCP markings and QoS counters increment as expected.
+
+The screenshot below shows `CR3` verifying the live policy on `GigabitEthernet0/1`. The `VOICE` class has matched traffic, the packets are being marked as `dscp ef`, and the strict-priority queue is active with `0` drops during the test.
+
+![CR3 QoS policy verification showing matched voice traffic, DSCP EF marking, and strict priority queueing on GigabitEthernet0/1](screenshots/qos-test.png)
+
+### Verification Commands
+
+```cisco
+show access-lists VOICE-TRAFFIC
+show class-map VOICE
+show policy-map MARK-VOICE
+show policy-map interface <interface>
+show mls qos interface <trusted-switch-uplink>
+```
+
+### Packet Tracer Note
+
+Packet Tracer does not always simulate congestion or best-effort packet drops realistically, even when multiple traffic generators are active. In this lab, the most reliable QoS validation comes from verifying DSCP preservation, class counters, and strict-priority queue statistics rather than expecting dramatic packet loss in competing traffic classes.
+
+Packet Tracer can also fail to retain QoS-related configuration even after saving to startup config. Because of that, I decided to keep the active QoS demo scoped to `ASW1`, with `PH1` on `G1/0/1` and `PH3` on `G1/0/2`, so marking, trust, preservation, and queueing can be demonstrated more simply. This also makes re-applying the configuration far less tedious than rebuilding the same QoS setup across every access switch after each restart.
+
+If QoS is not working, markings aren't preserved due to configs not being retained on Packet Tracer, reapply the config on the following:
+
+```cisco
+ASW1
+interface g1/0/1
+ service-policy input MARK-VOICE
+interface g1/0/2
+ service-policy input MARK-VOICE
+CR3
+interface g0/0
+ service-policy output MARK-VOICE
+interface g0/1
+ service-policy output MARK-VOICE
+!
+CR4
+interface g0/1
+ service-policy output MARK-VOICE
+!
+EDGE
+interface g0/0
+ service-policy output MARK-VOICE
+interface g0/1
+ service-policy output MARK-VOICE
+```
+
 ## Configuration Workflow
 
 1. Configure hostnames on routers, switches, and hosts.
@@ -677,15 +847,17 @@ show running-config | section line vty
 7. Enable RSTP and harden the edge with PortFast and BPDU Guard.
 8. Create SVIs for inter-VLAN routing.
 9. Verify VLAN reachability and gateway connectivity.
-10. Configure router interfaces and upstream connectivity.
-11. Deploy OSPF and validate adjacency plus route exchange.
-12. Add EtherChannel for redundancy and higher throughput.
-13. Configure FHRP for resilient IPv4 default gateway services.
-14. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
-15. Configure SSH management access restrictions.
-16. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
-17. Apply ACL policy controls and validate source-based filtering behavior.
-18. Test failover, path selection, name resolution, monitoring, and end-to-end connectivity.
+10. Add the voice VLAN on phone-facing access ports and verify IP phone registration.
+11. Configure router interfaces and upstream connectivity.
+12. Deploy OSPF and validate adjacency plus route exchange.
+13. Add EtherChannel for redundancy and higher throughput.
+14. Configure FHRP for resilient IPv4 default gateway services.
+15. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
+16. Configure SSH management access restrictions.
+17. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
+18. Apply ACL policy controls and validate source-based filtering behavior.
+19. Apply QoS trust, classification, marking, and priority queueing for voice traffic.
+20. Test failover, path selection, name resolution, monitoring, VoIP behavior, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -693,14 +865,16 @@ show running-config | section line vty
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
 - In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
 - Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
-- Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the user VLANs, and the admin server providing DNS, NTP, and syslog reception.
+- Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the data and voice VLANs, and the admin server providing DNS, NTP, and syslog reception.
 - SSH management access is intentionally restricted to **VLAN 30 / IT** by applying a standard ACL to the VTY lines.
+- The current latest lab includes **IP phones on a separate `VLAN 100` voice network** so the same topology can be used for both VoIP and QoS validation.
+- Packet Tracer QoS behavior is limited, so **ACL-based voice classification plus policy counters** are used to confirm DSCP marking and strict-priority treatment.
 - Packet Tracer monitoring features (SNMP and Syslog) are intentionally simple in this lab due to limitations.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
 ### Example VLSM Workflow
 
-The same structured approach is used when building subnets for the lab. In this topology, the user VLANs are intentionally kept as `/24` networks for simplicity and room to grow, while WAN point-to-point links use `/30` subnets:
+The same structured approach is used when building subnets for the lab. In this topology, the data and voice VLANs are intentionally kept as `/24` networks for simplicity and room to grow, while WAN point-to-point links use `/30` subnets:
 
 ```text
 HR VLAN 10
@@ -739,6 +913,15 @@ Usable range: 192.168.40.1 - 192.168.40.254
 Broadcast address: 192.168.40.255
 Gateway: 192.168.40.254
 
+Voice VLAN 100
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.100.0/24
+Prefix: /24
+Usable range: 192.168.100.1 - 192.168.100.254
+Broadcast address: 192.168.100.255
+Gateway: 192.168.100.254
+
 R3-EDGE P2P
 Host bits: 2^2 = 4
 Mask: 255.255.255.252
@@ -769,7 +952,7 @@ Next network: 203.0.113.12
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
--QoS, Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
+- Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
 - LAN and WAN architecture features such as STP/FHRP synchronization and GRE tunnels
 - Virtualization, cloud, containers, and VRF concepts
 - Wireless fundamentals, architecture, security, and configuration
