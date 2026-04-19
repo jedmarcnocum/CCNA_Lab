@@ -71,7 +71,6 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `SNMP & Syslog.pkt` | SNMP communities and syslog testing to the admin server |
 | `NAT.pkt` | `EDGE` PAT overload for inside local networks and internet access |
 | `SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
-| `QoS - VLAN100.pkt` | Initial voice VLAN 100 build used to prepare VoIP traffic for QoS testing |
 | `QoS.pkt` | Latest VoIP and QoS lab with preserved DSCP markings and priority queue validation |
 
 ## Topology Snapshot
