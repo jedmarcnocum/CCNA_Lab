@@ -54,7 +54,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 
 ## Lab Files
 
-These Packet Tracer labs show the progression of the topology and the topics covered:
+These Packet Tracer labs show the progression of the topology and the topics covered. The latest lab file in the series is `QoS.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
@@ -809,11 +809,9 @@ show mls qos interface <trusted-switch-uplink>
 
 Packet Tracer does not always simulate congestion or best-effort packet drops realistically, even when multiple traffic generators are active. In this lab, the most reliable QoS validation comes from verifying DSCP preservation, class counters, and strict-priority queue statistics rather than expecting dramatic packet loss in competing traffic classes.
 
-Packet Tracer can also fail to retain QoS-related configuration after the lab is closed and reopened. Because of that, I decided to keep the active QoS demo scoped to `ASW1`, with `PH1` on `G1/0/1` and `PH3` on `G1/0/2`, so marking, trust, preservation, and queueing can be demonstrated more simply. This also makes re-applying the configuration far less tedious than rebuilding the same QoS setup across every access switch after each restart.
+Packet Tracer can also fail to retain QoS-related configuration even after saving to startup config. Because of that, I decided to keep the active QoS demo scoped to `ASW1`, with `PH1` on `G1/0/1` and `PH3` on `G1/0/2`, so marking, trust, preservation, and queueing can be demonstrated more simply. This also makes re-applying the configuration far less tedious than rebuilding the same QoS setup across every access switch after each restart.
 
 If QoS is not working, markings aren't preserved due to configs not being retained on Packet Tracer, reapply the config on the following:
-
-Apply the missing input policy on both phone-facing access ports on `ASW1`:
 
 ```cisco
 ASW1
