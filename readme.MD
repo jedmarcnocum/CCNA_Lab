@@ -23,6 +23,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [SSH Documentation](#ssh-documentation)
 - [VoIP Documentation](#voip-documentation)
 - [QoS Documentation](#qos-documentation)
+- [Port Security Documentation](#port-security-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -51,10 +52,11 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - Restricted SSH management access from the IT VLAN
 - VoIP phone access ports with a separate voice VLAN
 - QoS classification, DSCP EF marking, trust boundaries, and strict priority queueing for voice traffic
+- Port security with sticky secure MAC learning on user-facing access ports and manually defined secure MACs for fixed services hosts
 
 ## Lab Files
 
-These Packet Tracer labs show the progression of the topology and the topics covered. The latest lab file in the series is `QoS.pkt`.
+These Packet Tracer labs show the progression of the topology and the topics covered. The latest lab file in the series is `Port Security.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
@@ -71,7 +73,8 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `SNMP & Syslog.pkt` | SNMP communities and syslog testing to the admin server |
 | `NAT.pkt` | `EDGE` PAT overload for inside local networks and internet access |
 | `SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
-| `QoS.pkt` | Latest VoIP and QoS lab with preserved DSCP markings and priority queue validation |
+| `QoS.pkt` | VoIP and QoS lab with preserved DSCP markings and priority queue validation |
+| `Port Security.pkt` | Latest access-layer security lab with sticky learning, manual secure MACs, and restrict-mode violations |
 
 ## Topology Snapshot
 
@@ -87,6 +90,7 @@ The current lab design includes:
 - DHCP scope delivery for data VLANs `10`, `20`, and `30`, plus the voice VLAN `100`
 - Cisco IP phones added at the access layer with a dedicated `VLAN 100` voice segment
 - QoS policy testing with DSCP marking at `ASW1`, DSCP trust at `DSW3-MAIN` and `DSW3-BACKUP`, and egress priority queueing on routed devices such as `CR3`, `CR4`, and `EDGE`
+- Port security on access ports, using sticky learning on `ASW1` and `ASW2` plus manually configured secure MAC addresses on `ASW3`
 - IPv4 and IPv6 addressing throughout the environment
 
 ## Addressing Plan
@@ -836,6 +840,71 @@ interface g0/1
  service-policy output MARK-VOICE
 ```
 
+## Port Security Documentation
+
+This section documents the access-layer port security settings added in the latest `Port Security.pkt` lab.
+
+### Port Security Summary
+
+- `ASW1` and `ASW2` use sticky secure MAC learning on user-facing access ports.
+- Those ports allow a maximum of `3` secure MAC addresses: one for the IP phone on the voice VLAN, one for the attached PC on the data VLAN, and one for internal switch control-plane MAC, which would otherwise trigger port-security violations if not included.
+- `ASW3` uses manually configured secure MAC addresses instead of sticky learning because the connected services hosts are fixed devices in `VLAN 40`.
+- Violation mode is set to `restrict` so unauthorized MAC addresses are dropped and counted without err-disabling the port.
+- Port security is applied only on access ports, not on trunk links between switches.
+
+### ASW1 and ASW2 Access Port Pattern
+
+Apply the following pattern on host-facing ports connected to an IP phone and an attached PC:
+
+```cisco
+interface <access-port>
+ switchport port-security
+ switchport port-security maximum 3
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+```
+
+### ASW3 Static Secure MAC Configuration
+
+`ASW3` uses manually configured secure MAC addresses on the services VLAN access ports:
+
+```cisco
+interface GigabitEthernet1/0/1
+ switchport port-security
+ switchport port-security violation restrict
+ switchport port-security mac-address 000C.852E.D689
+!
+interface GigabitEthernet1/0/2
+ switchport port-security
+ switchport port-security violation restrict
+ switchport port-security mac-address 0004.9A34.B5A3
+!
+interface GigabitEthernet1/0/3
+ switchport port-security
+ switchport port-security violation restrict
+ switchport port-security mac-address 0007.EC5C.3D58
+!
+interface GigabitEthernet1/0/4
+ switchport port-security
+ switchport port-security violation restrict
+ switchport port-security mac-address 0060.47CB.1401
+```
+
+### Intended Behavior
+
+- A known phone and PC can share the same secured access port on `ASW1` or `ASW2` without triggering a violation.
+- On `ASW3`, only the manually approved services-host MAC addresses are allowed on `GigabitEthernet1/0/1` through `GigabitEthernet1/0/4`.
+- If an unauthorized device is connected, the switch drops the offending frames, increments the security violation counter, and keeps the port up because `restrict` mode is used.
+
+### Verification Commands
+
+```cisco
+show port-security
+show port-security address
+show port-security interface <interface>
+show running-config interface <interface>
+```
+
 ## Configuration Workflow
 
 1. Configure hostnames on routers, switches, and hosts.
@@ -857,7 +926,8 @@ interface g0/1
 17. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
 18. Apply ACL policy controls and validate source-based filtering behavior.
 19. Apply QoS trust, classification, marking, and priority queueing for voice traffic.
-20. Test failover, path selection, name resolution, monitoring, VoIP behavior, and end-to-end connectivity.
+20. Apply port security on user-facing access ports and verify secure MAC learning or manual secure MAC bindings.
+21. Test failover, path selection, name resolution, monitoring, VoIP behavior, access-layer security behavior, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -869,6 +939,7 @@ interface g0/1
 - SSH management access is intentionally restricted to **VLAN 30 / IT** by applying a standard ACL to the VTY lines.
 - The current latest lab includes **IP phones on a separate `VLAN 100` voice network** so the same topology can be used for both VoIP and QoS validation.
 - Packet Tracer QoS behavior is limited, so **ACL-based voice classification plus policy counters** are used to confirm DSCP marking and strict-priority treatment.
+- Port security is applied at the access layer with **sticky learning on `ASW1` and `ASW2`** and **manual secure MAC bindings on `ASW3`** to reflect the difference between dynamic user ports and fixed services devices.
 - Packet Tracer monitoring features (SNMP and Syslog) are intentionally simple in this lab due to limitations.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
@@ -952,7 +1023,7 @@ Next network: 203.0.113.12
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
-- Security features such as port security, DHCP snooping, and Dynamic ARP Inspection
+- Additional Layer 2 security features such as DHCP snooping and Dynamic ARP Inspection
 - LAN and WAN architecture features such as STP/FHRP synchronization and GRE tunnels
 - Virtualization, cloud, containers, and VRF concepts
 - Wireless fundamentals, architecture, security, and configuration
