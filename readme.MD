@@ -921,7 +921,7 @@ This section documents the Layer 2 DHCP security controls added in the latest `D
 - A rogue DHCP server is connected to `ASW1` on `GigabitEthernet1/0/6` as an untrusted test device.
 - Trusted DHCP snooping ports are limited to uplinks and the known DHCP server path.
 - Host-facing ports remain untrusted so client DHCP requests are allowed, but DHCP server replies from rogue devices are blocked.
-- `PC3` / Host 3 has a DHCP snooping rate limit of `1` packet per second for flooding validation.
+- `PC4` / Host 4 on `ASW2` has a DHCP snooping rate limit of `1` packet per second for flooding validation.
 
 ### Trusted Port Map
 
@@ -941,9 +941,9 @@ The rogue DHCP server on `ASW1` `GigabitEthernet1/0/6` is intentionally connecte
 
 ### Rate-Limit Flooding Test
 
-Host 3 is configured with a DHCP snooping rate limit of `1` packet per second. To trigger the test in Packet Tracer, use `PC3` > `Config` and quickly toggle the IP configuration between `Static` and `DHCP` multiple times. The switch should detect the burst and enforce the configured limit.
+Host 4 on `ASW2` is configured with a DHCP snooping rate limit of `1` packet per second. To trigger the test in Packet Tracer, use `PC4` > `Config` and quickly toggle the IP configuration between `Static` and `DHCP` multiple times. The switch should detect the burst and enforce the configured limit.
 
-![DHCP snooping rate-limit test for Host 3](screenshots/dhcp-snooping-rate-limit_1-test-host3-only.png)
+![DHCP snooping rate-limit test for Host 4](screenshots/dhcp-snooping-rate-limit_1-test-host4-only.png)
 
 ### Verification Commands
 
@@ -991,7 +991,7 @@ show running-config interface <interface>
 - The lab includes **IP phones on a separate `VLAN 100` voice network** so the same topology can be used for both VoIP and QoS validation.
 - Packet Tracer QoS behavior is limited, so **ACL-based voice classification plus policy counters** are used to confirm DSCP marking and strict-priority treatment.
 - Port security is applied at the access layer with **sticky learning on `ASW1` and `ASW2`** and **manual secure MAC bindings on `ASW3`** to reflect the difference between dynamic user ports and fixed services devices.
-- DHCP snooping trust is applied only where DHCP replies should legitimately travel, with rogue-server testing on `ASW1` and rate-limit testing on Host 3.
+- DHCP snooping trust is applied only where DHCP replies should legitimately travel, with rogue-server testing on `ASW1` and rate-limit testing on Host 4 connected to `ASW2`.
 - Packet Tracer monitoring features (SNMP and Syslog) are intentionally simple in this lab due to limitations.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
