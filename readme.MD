@@ -24,6 +24,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [VoIP Documentation](#voip-documentation)
 - [QoS Documentation](#qos-documentation)
 - [Port Security Documentation](#port-security-documentation)
+- [DHCP Snooping Documentation](#dhcp-snooping-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -53,10 +54,11 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - VoIP phone access ports with a separate voice VLAN
 - QoS classification, DSCP EF marking, trust boundaries, and strict priority queueing for voice traffic
 - Port security with sticky secure MAC learning on user-facing access ports and manually defined secure MACs for fixed services hosts
+- DHCP snooping with trusted uplinks, rogue DHCP blocking, and access-port rate-limit testing
 
 ## Lab Files
 
-These Packet Tracer labs show the progression of the topology and the topics covered. The latest lab file in the series is `Port Security.pkt`.
+These Packet Tracer labs show the progression of the topology and the topics covered. The latest lab file in the series is `DHCP Snooping.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
@@ -74,7 +76,8 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `NAT.pkt` | `EDGE` PAT overload for inside local networks and internet access |
 | `SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
 | `QoS.pkt` | VoIP and QoS lab with preserved DSCP markings and priority queue validation |
-| `Port Security.pkt` | Latest access-layer security lab with sticky learning, manual secure MACs, and restrict-mode violations |
+| `Port Security.pkt` | Access-layer security lab with sticky learning, manual secure MACs, and restrict-mode violations |
+| `DHCP Snooping.pkt` | Latest Layer 2 DHCP security lab with rogue DHCP blocking, trusted uplinks, and rate-limit testing |
 
 ## Topology Snapshot
 
@@ -91,6 +94,8 @@ The current lab design includes:
 - Cisco IP phones added at the access layer with a dedicated `VLAN 100` voice segment
 - QoS policy testing with DSCP marking at `ASW1`, DSCP trust at `DSW3-MAIN` and `DSW3-BACKUP`, and egress priority queueing on routed devices such as `CR3`, `CR4`, and `EDGE`
 - Port security on access ports, using sticky learning on `ASW1` and `ASW2` plus manually configured secure MAC addresses on `ASW3`
+- DHCP snooping enabled to protect the centralized DHCP design from rogue DHCP offers and DHCP message flooding
+- A rogue DHCP test server connected to `ASW1` on `GigabitEthernet1/0/6` for validation
 - IPv4 and IPv6 addressing throughout the environment
 
 ## Addressing Plan
@@ -516,7 +521,7 @@ interface vlan 20
 
 ## DNS and DHCP Documentation
 
-This section documents the centralized services added in the latest Packet Tracer lab version.
+This section documents the centralized services added in the `DNS & DHCP.pkt` lab.
 
 ### DNS Summary
 
@@ -574,7 +579,7 @@ show running-config | include clock timezone|ntp server
 
 ## SNMP and Syslog Documentation
 
-This section documents the basic monitoring features added in the latest Packet Tracer lab version.
+This section documents the basic monitoring features added in the `SNMP & Syslog.pkt` lab.
 
 ### SNMP Summary
 
@@ -683,7 +688,7 @@ show running-config | section line vty
 
 ## VoIP Documentation
 
-This section documents the VoIP baseline used in the current latest Packet Tracer lab version.
+This section documents the VoIP baseline used in the Packet Tracer lab.
 
 ### VoIP Summary
 
@@ -764,7 +769,7 @@ show telephony-service ephone
 
 ## QoS Documentation
 
-This section documents the voice-priority QoS policy used in the latest `QoS.pkt` lab.
+This section documents the voice-priority QoS policy used in the `QoS.pkt` lab.
 
 ### QoS Summary
 
@@ -842,7 +847,7 @@ interface g0/1
 
 ## Port Security Documentation
 
-This section documents the access-layer port security settings added in the latest `Port Security.pkt` lab.
+This section documents the access-layer port security settings added in the `Port Security.pkt` lab.
 
 ### Port Security Summary
 
@@ -905,6 +910,82 @@ show port-security interface <interface>
 show running-config interface <interface>
 ```
 
+## DHCP Snooping Documentation
+
+This section documents the Layer 2 DHCP security controls added in the latest `DHCP Snooping.pkt` lab.
+
+### DHCP Snooping Summary
+
+- DHCP snooping is used to protect the trusted DHCP service from rogue DHCP offers and access-port DHCP flooding.
+- The legitimate DHCP server remains the centralized services server at `192.168.40.4`.
+- A rogue DHCP server is connected to `ASW1` on `GigabitEthernet1/0/6` as an untrusted test device.
+- Trusted DHCP snooping ports are limited to uplinks and the known DHCP server path.
+- Host-facing ports remain untrusted so client DHCP requests are allowed, but DHCP server replies from rogue devices are blocked.
+- `PC4` / Host 4 on `ASW2` has a DHCP snooping rate limit of `1` packet per second for flooding validation.
+
+### DHCP Snooping VLAN Scope
+
+| Device | Snooping VLAN(s) |
+|---|---|
+| `ASW1` | `10`, `30` |
+| `ASW2` | `20` |
+| `ASW3` | `40` |
+
+### DHCP Snooping Configuration
+
+#### ASW1
+
+```cisco
+ip dhcp snooping
+ip dhcp snooping vlan 10,30
+```
+
+#### ASW2
+
+```cisco
+ip dhcp snooping
+ip dhcp snooping vlan 20
+```
+
+#### ASW3
+
+```cisco
+ip dhcp snooping
+ip dhcp snooping vlan 40
+```
+
+### Trusted Port Map
+
+| Device | Trusted Interface(s) | Purpose |
+|---|---|---|
+| `ASW1` | `GigabitEthernet1/0/3` - `GigabitEthernet1/0/4` | Uplinks toward the distribution switches |
+| `ASW2` | `GigabitEthernet1/0/1` - `GigabitEthernet1/0/2` | Uplinks toward the distribution switches |
+| `ASW3` | `GigabitEthernet1/0/4` | trusted DHCP path between ASW3 and DHCP Server |
+| `DSW3-MAIN` | `GigabitEthernet1/0/5` | Link connected to `ASW3` |
+| `DSW3-BACKUP` | `GigabitEthernet1/0/5` | Link connected to `ASW3` |
+
+### Rogue DHCP Server Test
+
+The rogue DHCP server on `ASW1` `GigabitEthernet1/0/6` is intentionally connected on an untrusted port. During testing, the rogue server attempts to respond to DHCP requests, but DHCP snooping blocks the unauthorized server traffic before clients can use the rogue scope.
+
+![DHCP snooping rogue DHCP server prevented](screenshots/dhcp-snooping-rogue_dhcp-prevented.png)
+
+### Rate-Limit Flooding Test
+
+Host 4 on `ASW2` is configured with a DHCP snooping rate limit of `1` packet per second. To trigger the test in Packet Tracer, use `PC4` > `Config` and quickly toggle the IP configuration between `Static` and `DHCP` multiple times. The switch should detect the burst and enforce the configured limit.
+
+![DHCP snooping rate-limit test for Host 4](screenshots/dhcp-snooping-rate-limit_1-test-host4-only.png)
+
+### Verification Commands
+
+```cisco
+show ip dhcp snooping
+show ip dhcp snooping binding
+show ip dhcp snooping statistics
+show running-config | section dhcp snooping
+show running-config interface <interface>
+```
+
 ## Configuration Workflow
 
 1. Configure hostnames on routers, switches, and hosts.
@@ -927,7 +1008,8 @@ show running-config interface <interface>
 18. Apply ACL policy controls and validate source-based filtering behavior.
 19. Apply QoS trust, classification, marking, and priority queueing for voice traffic.
 20. Apply port security on user-facing access ports and verify secure MAC learning or manual secure MAC bindings.
-21. Test failover, path selection, name resolution, monitoring, VoIP behavior, access-layer security behavior, and end-to-end connectivity.
+21. Configure DHCP snooping trust boundaries and access-port rate limits.
+22. Test failover, path selection, name resolution, monitoring, VoIP behavior, access-layer security behavior, DHCP snooping behavior, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -937,9 +1019,10 @@ show running-config interface <interface>
 - Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
 - Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the data and voice VLANs, and the admin server providing DNS, NTP, and syslog reception.
 - SSH management access is intentionally restricted to **VLAN 30 / IT** by applying a standard ACL to the VTY lines.
-- The current latest lab includes **IP phones on a separate `VLAN 100` voice network** so the same topology can be used for both VoIP and QoS validation.
+- The lab includes **IP phones on a separate `VLAN 100` voice network** so the same topology can be used for both VoIP and QoS validation.
 - Packet Tracer QoS behavior is limited, so **ACL-based voice classification plus policy counters** are used to confirm DSCP marking and strict-priority treatment.
 - Port security is applied at the access layer with **sticky learning on `ASW1` and `ASW2`** and **manual secure MAC bindings on `ASW3`** to reflect the difference between dynamic user ports and fixed services devices.
+- DHCP snooping trust is applied only where DHCP replies should legitimately travel, with rogue-server testing on `ASW1` and rate-limit testing on Host 4 connected to `ASW2`.
 - Packet Tracer monitoring features (SNMP and Syslog) are intentionally simple in this lab due to limitations.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
@@ -1023,7 +1106,7 @@ Next network: 203.0.113.12
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
-- Additional Layer 2 security features such as DHCP snooping and Dynamic ARP Inspection
+- Additional Layer 2 security features such as Dynamic ARP Inspection
 - LAN and WAN architecture features such as STP/FHRP synchronization and GRE tunnels
 - Virtualization, cloud, containers, and VRF concepts
 - Wireless fundamentals, architecture, security, and configuration
