@@ -923,13 +923,44 @@ This section documents the Layer 2 DHCP security controls added in the latest `D
 - Host-facing ports remain untrusted so client DHCP requests are allowed, but DHCP server replies from rogue devices are blocked.
 - `PC4` / Host 4 on `ASW2` has a DHCP snooping rate limit of `1` packet per second for flooding validation.
 
+### DHCP Snooping VLAN Scope
+
+| Device | Snooping VLAN(s) |
+|---|---|
+| `ASW1` | `10`, `30` |
+| `ASW2` | `20` |
+| `ASW3` | `40` |
+
+### DHCP Snooping Configuration
+
+#### ASW1
+
+```cisco
+ip dhcp snooping
+ip dhcp snooping vlan 10,30
+```
+
+#### ASW2
+
+```cisco
+ip dhcp snooping
+ip dhcp snooping vlan 20
+```
+
+#### ASW3
+
+```cisco
+ip dhcp snooping
+ip dhcp snooping vlan 40
+```
+
 ### Trusted Port Map
 
 | Device | Trusted Interface(s) | Purpose |
 |---|---|---|
 | `ASW1` | `GigabitEthernet1/0/3` - `GigabitEthernet1/0/4` | Uplinks toward the distribution switches |
 | `ASW2` | `GigabitEthernet1/0/1` - `GigabitEthernet1/0/2` | Uplinks toward the distribution switches |
-| `ASW3` | `GigabitEthernet1/0/4` | Uplink / trusted DHCP path toward the distribution layer |
+| `ASW3` | `GigabitEthernet1/0/4` | trusted DHCP path between ASW3 and DHCP Server |
 | `DSW3-MAIN` | `GigabitEthernet1/0/5` | Link connected to `ASW3` |
 | `DSW3-BACKUP` | `GigabitEthernet1/0/5` | Link connected to `ASW3` |
 
