@@ -24,7 +24,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [VoIP Documentation](#voip-documentation)
 - [QoS Documentation](#qos-documentation)
 - [Port Security Documentation](#port-security-documentation)
-- [DHCP Snooping Documentation](#dhcp-snooping-documentation)
+- [DHCP Snooping and DAI Documentation](#dhcp-snooping-and-dai-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -54,7 +54,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - VoIP phone access ports with a separate voice VLAN
 - QoS classification, DSCP EF marking, trust boundaries, and strict priority queueing for voice traffic
 - Port security with sticky secure MAC learning on user-facing access ports and manually defined secure MACs for fixed services hosts
-- DHCP snooping with trusted uplinks, rogue DHCP blocking, and access-port rate-limit testing
+- DHCP snooping and Dynamic ARP Inspection with trusted uplinks, rogue DHCP blocking, IP/MAC validation, and access-port rate-limit testing
 
 ## Lab Files
 
@@ -77,7 +77,7 @@ These Packet Tracer labs show the progression of the topology and the topics cov
 | `SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
 | `QoS.pkt` | VoIP and QoS lab with preserved DSCP markings and priority queue validation |
 | `Port Security.pkt` | Access-layer security lab with sticky learning, manual secure MACs, and restrict-mode violations |
-| `DHCP Snooping.pkt` | Latest Layer 2 DHCP security lab with rogue DHCP blocking, trusted uplinks, and rate-limit testing |
+| `DHCP Snooping.pkt` | Latest Layer 2 security lab with DHCP snooping, Dynamic ARP Inspection, rogue DHCP blocking, and rate-limit testing |
 
 ## Topology Snapshot
 
@@ -95,6 +95,7 @@ The current lab design includes:
 - QoS policy testing with DSCP marking at `ASW1`, DSCP trust at `DSW3-MAIN` and `DSW3-BACKUP`, and egress priority queueing on routed devices such as `CR3`, `CR4`, and `EDGE`
 - Port security on access ports, using sticky learning on `ASW1` and `ASW2` plus manually configured secure MAC addresses on `ASW3`
 - DHCP snooping enabled to protect the centralized DHCP design from rogue DHCP offers and DHCP message flooding
+- Dynamic ARP Inspection enabled on the same access-layer VLANs to validate ARP packets against trusted bindings
 - A rogue DHCP test server connected to `ASW1` on `GigabitEthernet1/0/6` for validation
 - IPv4 and IPv6 addressing throughout the environment
 
@@ -910,34 +911,38 @@ show port-security interface <interface>
 show running-config interface <interface>
 ```
 
-## DHCP Snooping Documentation
+## DHCP Snooping and DAI Documentation
 
-This section documents the Layer 2 DHCP security controls added in the latest `DHCP Snooping.pkt` lab.
+This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection controls added in the latest `DHCP Snooping.pkt` lab.
 
-### DHCP Snooping Summary
+### DHCP Snooping and DAI Summary
 
 - DHCP snooping is used to protect the trusted DHCP service from rogue DHCP offers and access-port DHCP flooding.
+- Dynamic ARP Inspection (DAI) is paired with DHCP snooping so ARP packets can be validated against trusted DHCP snooping information.
 - The legitimate DHCP server remains the centralized services server at `192.168.40.4`.
 - A rogue DHCP server is connected to `ASW1` on `GigabitEthernet1/0/6` as an untrusted test device.
 - Trusted DHCP snooping ports are limited to uplinks and the known DHCP server path.
+- Trusted DAI interfaces follow the same trusted-uplink design as DHCP snooping.
 - Host-facing ports remain untrusted so client DHCP requests are allowed, but DHCP server replies from rogue devices are blocked.
 - `PC4` / Host 4 on `ASW2` has a DHCP snooping rate limit of `1` packet per second for flooding validation.
 
-### DHCP Snooping VLAN Scope
+### DHCP Snooping and DAI VLAN Scope
 
-| Device | Snooping VLAN(s) |
+| Device | Protected VLAN(s) |
 |---|---|
 | `ASW1` | `10`, `30` |
 | `ASW2` | `20` |
 | `ASW3` | `40` |
 
-### DHCP Snooping Configuration
+### DHCP Snooping and DAI Configuration
 
 #### ASW1
 
 ```cisco
 ip dhcp snooping
 ip dhcp snooping vlan 10,30
+ip arp inspection vlan 10,30
+ip arp inspection validate src-mac dst-mac ip
 ```
 
 #### ASW2
@@ -945,6 +950,8 @@ ip dhcp snooping vlan 10,30
 ```cisco
 ip dhcp snooping
 ip dhcp snooping vlan 20
+ip arp inspection vlan 20
+ip arp inspection validate src-mac dst-mac ip
 ```
 
 #### ASW3
@@ -952,6 +959,8 @@ ip dhcp snooping vlan 20
 ```cisco
 ip dhcp snooping
 ip dhcp snooping vlan 40
+ip arp inspection vlan 40
+ip arp inspection validate src-mac dst-mac ip
 ```
 
 ### Trusted Port Map
@@ -976,13 +985,23 @@ Host 4 on `ASW2` is configured with a DHCP snooping rate limit of `1` packet per
 
 ![DHCP snooping rate-limit test for Host 4](screenshots/dhcp-snooping-rate-limit_1-test-host4-only.png)
 
+### DAI Validation Test
+
+Packet Tracer does not allow duplicate IP addressing on the network, so a full ARP spoofing attack cannot be simulated in this lab. Instead, the DAI test focuses on showing that ARP inspection is enabled and actively validating packets based on the switch output shown below.
+
+![DAI trigger test showing ARP inspection working](screenshots/dai-trigger-test.png)
+
 ### Verification Commands
 
 ```cisco
 show ip dhcp snooping
 show ip dhcp snooping binding
 show ip dhcp snooping statistics
+show ip arp inspection
+show ip arp inspection vlan
+show ip arp inspection interfaces
 show running-config | section dhcp snooping
+show running-config | section arp inspection
 show running-config interface <interface>
 ```
 
@@ -1008,8 +1027,8 @@ show running-config interface <interface>
 18. Apply ACL policy controls and validate source-based filtering behavior.
 19. Apply QoS trust, classification, marking, and priority queueing for voice traffic.
 20. Apply port security on user-facing access ports and verify secure MAC learning or manual secure MAC bindings.
-21. Configure DHCP snooping trust boundaries and access-port rate limits.
-22. Test failover, path selection, name resolution, monitoring, VoIP behavior, access-layer security behavior, DHCP snooping behavior, and end-to-end connectivity.
+21. Configure DHCP snooping and Dynamic ARP Inspection trust boundaries plus access-port rate limits.
+22. Test failover, path selection, name resolution, monitoring, VoIP behavior, access-layer security behavior, DHCP snooping behavior, DAI behavior, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -1022,7 +1041,7 @@ show running-config interface <interface>
 - The lab includes **IP phones on a separate `VLAN 100` voice network** so the same topology can be used for both VoIP and QoS validation.
 - Packet Tracer QoS behavior is limited, so **ACL-based voice classification plus policy counters** are used to confirm DSCP marking and strict-priority treatment.
 - Port security is applied at the access layer with **sticky learning on `ASW1` and `ASW2`** and **manual secure MAC bindings on `ASW3`** to reflect the difference between dynamic user ports and fixed services devices.
-- DHCP snooping trust is applied only where DHCP replies should legitimately travel, with rogue-server testing on `ASW1` and rate-limit testing on Host 4 connected to `ASW2`.
+- DHCP snooping and DAI trust are applied only where DHCP replies and validated ARP traffic should legitimately travel, with rogue-server testing on `ASW1`, rate-limit testing on Host 4 connected to `ASW2`, and DAI verification via switch output because Packet Tracer does not model a duplicate-IP spoofing attack scenario.
 - Packet Tracer monitoring features (SNMP and Syslog) are intentionally simple in this lab due to limitations.
 - Basic device login security, such as local authentication on routers and switches, is intentionally skipped in this lab.
 
@@ -1106,12 +1125,11 @@ Next network: 203.0.113.12
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
-- Additional Layer 2 security features such as Dynamic ARP Inspection
+- Improve per-VLAN load balancing on RSTP (ds-main, ds-backup)
 - LAN and WAN architecture features such as STP/FHRP synchronization and GRE tunnels
 - Virtualization, cloud, containers, and VRF concepts
 - Wireless fundamentals, architecture, security, and configuration
 - Network automation topics such as JSON, XML, YAML, REST APIs, SDN, Ansible, Puppet, Chef, and Terraform
-- More screenshots, verification outputs, and troubleshooting scenarios
 - A future rebuild of the lab in EVE-NG or GNS3 overcoming Packet Tracer's limitations.
 
 ---
