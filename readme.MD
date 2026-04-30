@@ -138,6 +138,8 @@ The multilayer switches follow a predictable addressing structure to make verifi
 
 For this Packet Tracer lab, FHRP is used for IPv4 only. IPv6 does not use a virtual gateway address here because IPv6 FHRP is not working reliably in Packet Tracer, so the hosts reference the SVI addresses on the multilayer switches instead.
 
+The FHRP active gateway placement is aligned with the spanning-tree root placement so the preferred Layer 2 path and preferred default gateway stay on the same distribution switch for each VLAN group.
+
 | Role | IPv4 Pattern | IPv6 Pattern |
 |---|---|---|
 | Main multilayer switch SVI | `192.168.x.252` | `2001:DB8:x::252` |
@@ -145,6 +147,13 @@ For this Packet Tracer lab, FHRP is used for IPv4 only. IPv6 does not use a virt
 | Virtual default gateway | `192.168.x.254` | Not used in this Packet Tracer IPv6 lab |
 
 Replace `x` with the VLAN number such as `10`, `20`, `30`, `40`, or `100`.
+
+### FHRP Active / Standby VLAN Split
+
+| VLAN Group | Active FHRP Device | Standby FHRP Device |
+|---|---|---|
+| `10`, `30`, `100` | `DSW1-MAIN` | `DSW2-BACKUP` |
+| `20`, `40` | `DSW2-BACKUP` | `DSW1-MAIN` |
 
 ### Point-to-Point WAN Links
 
@@ -194,8 +203,11 @@ This section documents the PVST configuration used to stabilize Layer 2 paths an
 ### Design Summary
 
 - PVST is enabled for per-VLAN spanning-tree control.
-- `DSW1-MAIN` is configured as the root primary switch for all VLANs.
-- `DSW2-BACKUP` is configured as the root secondary switch for all VLANs.
+- Per-VLAN load balancing is used across the distribution pair instead of making one switch the root primary for every VLAN.
+- `DSW1-MAIN` is the root primary switch for `VLANs 10, 30, and 100` and root secondary for `VLANs 20 and 40`.
+- `DSW2-BACKUP` is the root primary switch for `VLANs 20 and 40` and root secondary for `VLANs 10, 30, and 100`.
+- This spreads Layer 2 forwarding paths across both distribution switches while still preserving deterministic failover behavior.
+- The STP root split is intentionally aligned with the FHRP active gateway split to keep forwarding local to the preferred distribution switch during normal operation.
 - STP protections, including PortFast, BPDU Guard, and Root Guard, are applied on the access switches rather than on the distribution switches.
 - On the access switches, these features speed host connectivity and help prevent accidental switch connections or unexpected root-bridge changes.
 
@@ -205,14 +217,16 @@ This section documents the PVST configuration used to stabilize Layer 2 paths an
 
 ```cisco
 spanning-tree mode pvst
-spanning-tree vlan 1,10,20,30,40,100 root primary
+spanning-tree vlan 10,30,100 root primary
+spanning-tree vlan 20,40 root secondary
 ```
 
 #### DSW2-BACKUP
 
 ```cisco
 spanning-tree mode pvst
-spanning-tree vlan 1,10,20,30,40,100 root secondary
+spanning-tree vlan 20,40 root primary
+spanning-tree vlan 10,30,100 root secondary
 ```
 
 #### Access Switch Edge Protection
@@ -228,6 +242,7 @@ spanning-tree bpduguard default
 ```cisco
 show spanning-tree
 show spanning-tree vlan 10
+show spanning-tree root
 show spanning-tree summary
 show spanning-tree inconsistentports
 ```
@@ -1126,8 +1141,7 @@ Next network: 203.0.113.12
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
-- Improve per-VLAN load balancing on RSTP (ds-main, ds-backup)
-- LAN and WAN architecture features such as STP/FHRP synchronization and GRE tunnels
+- LAN and WAN architecture features such as GRE tunnels
 - Virtualization, cloud, containers, and VRF concepts
 - Wireless fundamentals, architecture, security, and configuration
 - Network automation topics such as JSON, XML, YAML, REST APIs, SDN, Ansible, Puppet, Chef, and Terraform
