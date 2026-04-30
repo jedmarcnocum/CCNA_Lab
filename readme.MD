@@ -170,8 +170,6 @@ interface vlan 10
 !
 interface vlan 20
  standby 20 ip 192.168.20.254
- standby 20 priority 90
- standby 20 preempt
 !
 interface vlan 30
  standby 30 ip 192.168.30.254
@@ -180,8 +178,6 @@ interface vlan 30
 !
 interface vlan 40
  standby 40 ip 192.168.40.254
- standby 40 priority 90
- standby 40 preempt
 !
 interface vlan 100
  standby 100 ip 192.168.100.254
@@ -194,8 +190,6 @@ interface vlan 100
 ```cisco
 interface vlan 10
  standby 10 ip 192.168.10.254
- standby 10 priority 90
- standby 10 preempt
 !
 interface vlan 20
  standby 20 ip 192.168.20.254
@@ -204,8 +198,6 @@ interface vlan 20
 !
 interface vlan 30
  standby 30 ip 192.168.30.254
- standby 30 priority 90
- standby 30 preempt
 !
 interface vlan 40
  standby 40 ip 192.168.40.254
@@ -214,8 +206,6 @@ interface vlan 40
 !
 interface vlan 100
  standby 100 ip 192.168.100.254
- standby 100 priority 90
- standby 100 preempt
 ```
 
 ### Verification Commands
@@ -346,6 +336,7 @@ This section documents the EtherChannel link configured between `DSW1-MAIN` and 
 - Traffic between the two multilayer switches can continue flowing even if a single physical member link goes down.
 - The switches treat the port-channel as one logical connection instead of separate parallel trunks.
 - The EtherChannel provides both redundancy and higher aggregate throughput across the distribution pair.
+- The bundle is formed with **LACP**, so both ends negotiate the port-channel rather than relying on a static `on` configuration.
 
 ### Verification Commands
 
@@ -354,6 +345,12 @@ show etherchannel summary
 show interfaces trunk
 show spanning-tree
 ```
+
+### Verification Screenshot
+
+The screenshot below shows the LACP EtherChannel up between `DSW1-MAIN` and `DSW2-BACKUP`, with `Port-channel1` in use and both member links bundled successfully.
+
+![EtherChannel summary showing Port-channel1 using LACP with both uplinks bundled between DSW1-MAIN and DSW2-BACKUP](screenshots/etherchannel-lacp-ds-main-backup.png)
 
 ## OSPF Documentation
 
@@ -440,21 +437,21 @@ router ospf 1
  default-information originate
 ```
 
-### Routed Interface OSPF Enablement
-
-```cisco
-interface <routed-uplink>
- ip ospf 1 area 0
-```
-
 ### Verification Commands
 
 ```cisco
 show ip ospf neighbor
+show ip ospf database
 show ip route ospf
 show ip ospf interface brief
 show ip protocols
 ```
+
+### Verification Screenshot
+
+The screenshot below shows `DSW1-MAIN` verifying a healthy and stable OSPF link-state database. The full topology is present, the shared segments are being advertised through the expected network LSAs, the external default route from `EDGE` is present, and there are no signs of database instability in the output.
+
+![DSW1-MAIN show ip ospf database output showing a healthy area 0 link-state database and the external default route learned from EDGE](screenshots/ospf-database.png)
 
 ## NAT Documentation
 
