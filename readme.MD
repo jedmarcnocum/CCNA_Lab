@@ -11,6 +11,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [Lab Files](#lab-files)
 - [Topology Snapshot](#topology-snapshot)
 - [Addressing Plan](#addressing-plan)
+- [HSRP Documentation](#hsrp-documentation)
 - [VTP Documentation](#vtp-documentation)
 - [PVST Documentation](#pvst-documentation)
 - [EtherChannel Documentation](#etherchannel-documentation)
@@ -43,7 +44,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - RSTP, PortFast, BPDU Guard, and Root Guard
 - EtherChannel for redundancy and bandwidth
 - OSPF routing and failover path behavior
-- FHRP for resilient IPv4 default gateways
+- HSRP for resilient IPv4 default gateways
 - IPv4 and IPv6 dual-stack addressing
 - Static routing, NAT/PAT, and WAN edge connectivity
 - Extended ACL policy enforcement for service-based access control
@@ -67,7 +68,7 @@ These Packet Tracer labs are stored in `labs/` and show the progression of the t
 | `labs/VLAN (P2P).pkt` | Layer 3 switching with SVIs and routed links |
 | `labs/RSTP.pkt` | Spanning-tree protection features |
 | `labs/Etherchannel.pkt` | Aggregated uplinks and redundancy |
-| `labs/FHRP.pkt` | IPv4 default gateway redundancy |
+| `labs/HSRP.pkt` | HSRP active/standby IPv4 default gateway redundancy |
 | `labs/OSPF.pkt` | Dynamic routing and path preference |
 | `labs/IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `labs/Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
@@ -132,13 +133,15 @@ The current lab design includes:
 | DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10`, `20`, `30`, and `100` |
 
 
-### FHRP / Gateway Pattern
+## HSRP Documentation
 
 The multilayer switches follow a predictable addressing structure to make verification and troubleshooting easier.
 
-For this Packet Tracer lab, FHRP is used for IPv4 only. IPv6 does not use a virtual gateway address here because IPv6 FHRP is not working reliably in Packet Tracer, so the hosts reference the SVI addresses on the multilayer switches instead.
+For this Packet Tracer lab, HSRP is the FHRP used for IPv4 default gateway redundancy. IPv6 does not use a virtual gateway address here because IPv6 FHRP is not working reliably in Packet Tracer, so the hosts reference the SVI addresses on the multilayer switches instead.
 
-The FHRP active gateway placement is aligned with the spanning-tree root placement so the preferred Layer 2 path and preferred default gateway stay on the same distribution switch for each VLAN group.
+The HSRP active gateway placement is aligned with the spanning-tree root placement so the preferred Layer 2 path and preferred default gateway stay on the same distribution switch for each VLAN group.
+
+### HSRP Summary
 
 | Role | IPv4 Pattern | IPv6 Pattern |
 |---|---|---|
@@ -148,12 +151,93 @@ The FHRP active gateway placement is aligned with the spanning-tree root placeme
 
 Replace `x` with the VLAN number such as `10`, `20`, `30`, `40`, or `100`.
 
-### FHRP Active / Standby VLAN Split
+### HSRP Active / Standby VLAN Split
 
-| VLAN Group | Active FHRP Device | Standby FHRP Device |
+| VLAN Group | Active HSRP Device | Standby HSRP Device |
 |---|---|---|
 | `10`, `30`, `100` | `DSW1-MAIN` | `DSW2-BACKUP` |
 | `20`, `40` | `DSW2-BACKUP` | `DSW1-MAIN` |
+
+### Example Configuration
+
+#### DSW1-MAIN
+
+```cisco
+interface vlan 10
+ standby 10 ip 192.168.10.254
+ standby 10 priority 110
+ standby 10 preempt
+!
+interface vlan 20
+ standby 20 ip 192.168.20.254
+ standby 20 priority 90
+ standby 20 preempt
+!
+interface vlan 30
+ standby 30 ip 192.168.30.254
+ standby 30 priority 110
+ standby 30 preempt
+!
+interface vlan 40
+ standby 40 ip 192.168.40.254
+ standby 40 priority 90
+ standby 40 preempt
+!
+interface vlan 100
+ standby 100 ip 192.168.100.254
+ standby 100 priority 110
+ standby 100 preempt
+```
+
+#### DSW2-BACKUP
+
+```cisco
+interface vlan 10
+ standby 10 ip 192.168.10.254
+ standby 10 priority 90
+ standby 10 preempt
+!
+interface vlan 20
+ standby 20 ip 192.168.20.254
+ standby 20 priority 110
+ standby 20 preempt
+!
+interface vlan 30
+ standby 30 ip 192.168.30.254
+ standby 30 priority 90
+ standby 30 preempt
+!
+interface vlan 40
+ standby 40 ip 192.168.40.254
+ standby 40 priority 110
+ standby 40 preempt
+!
+interface vlan 100
+ standby 100 ip 192.168.100.254
+ standby 100 priority 90
+ standby 100 preempt
+```
+
+### Verification Commands
+
+```cisco
+show standby brief
+show standby vlan 10
+show standby vlan 20
+show running-config | section interface Vlan
+```
+
+### Verification Screenshots
+
+The screenshots below show the HSRP state aligned with the spanning-tree load-balancing design: `DSW1-MAIN` is active for `VLANs 10, 30, and 100`, while `DSW2-BACKUP` is active for `VLANs 20 and 40`.
+
+#### DSW1-MAIN HSRP State
+
+![DSW1-MAIN standby brief output showing VLANs 10, 30, and 100 active while VLANs 20 and 40 remain standby](screenshots/fhrp-ds-main.png)
+
+#### DSW2-BACKUP HSRP State
+
+![DSW2-BACKUP standby brief output showing VLANs 20 and 40 active while VLANs 10, 30, and 100 remain standby](screenshots/fhrp-ds-backup.png)
 
 ### Point-to-Point WAN Links
 
@@ -207,7 +291,7 @@ This section documents the PVST configuration used to stabilize Layer 2 paths an
 - `DSW1-MAIN` is the root primary switch for `VLANs 10, 30, and 100` and root secondary for `VLANs 20 and 40`.
 - `DSW2-BACKUP` is the root primary switch for `VLANs 20 and 40` and root secondary for `VLANs 10, 30, and 100`.
 - This spreads Layer 2 forwarding paths across both distribution switches while still preserving deterministic failover behavior.
-- The STP root split is intentionally aligned with the FHRP active gateway split to keep forwarding local to the preferred distribution switch during normal operation.
+- The STP root split is intentionally aligned with the HSRP active gateway split to keep forwarding local to the preferred distribution switch during normal operation.
 - STP protections, including PortFast, BPDU Guard, and Root Guard, are applied on the access switches rather than on the distribution switches.
 - On the access switches, these features speed host connectivity and help prevent accidental switch connections or unexpected root-bridge changes.
 
@@ -1036,7 +1120,7 @@ show running-config interface <interface>
 11. Configure router interfaces and upstream connectivity.
 12. Deploy OSPF and validate adjacency plus route exchange.
 13. Add EtherChannel for redundancy and higher throughput.
-14. Configure FHRP for resilient IPv4 default gateway services.
+14. Configure HSRP for resilient IPv4 default gateway services.
 15. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
 16. Configure SSH management access restrictions.
 17. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
@@ -1050,8 +1134,8 @@ show running-config interface <interface>
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
 - I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read. I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
-- In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the `DSW1-MAIN` and `DSW2-BACKUP` SVI addresses** because an IPv6 virtual gateway is not used in this lab.
-- Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
+- In Packet Tracer, **IPv4 uses HSRP virtual gateways**, while **IPv6 uses the `DSW1-MAIN` and `DSW2-BACKUP` SVI addresses** because an IPv6 virtual gateway is not used in this lab.
+- Redundancy features such as **HSRP, EtherChannel, and STP protections** are included to reflect real design patterns.
 - Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the data and voice VLANs, and the admin server providing DNS, NTP, and syslog reception.
 - SSH management access is intentionally restricted to **VLAN 30 / IT** by applying a standard ACL to the VTY lines.
 - The lab includes **IP phones on a separate `VLAN 100` voice network** so the same topology can be used for both VoIP and QoS validation.
