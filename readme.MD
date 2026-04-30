@@ -58,26 +58,26 @@ Instead of treating each topic as a completely separate project, I use an **evol
 
 ## Lab Files
 
-These Packet Tracer labs show the progression of the topology and the topics covered. The latest lab file in the series is `DHCP Snooping.pkt`.
+These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the series is `labs/DHCP Snooping.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
-| `VTP.pkt` | VLAN propagation and switch domain setup |
-| `VLAN (ROAS).pkt` | Router-on-a-stick and inter-VLAN routing |
-| `VLAN (P2P).pkt` | Layer 3 switching with SVIs and routed links |
-| `RSTP.pkt` | Spanning-tree protection features |
-| `Etherchannel.pkt` | Aggregated uplinks and redundancy |
-| `FHRP.pkt` | IPv4 default gateway redundancy |
-| `OSPF.pkt` | Dynamic routing and path preference |
-| `IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
-| `Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
-| `DNS & DHCP.pkt` | Centralized DNS and DHCP services added to the services VLAN |
-| `SNMP & Syslog.pkt` | SNMP communities and syslog testing to the admin server |
-| `NAT.pkt` | `EDGE` PAT overload for inside local networks and internet access |
-| `SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
-| `QoS.pkt` | VoIP and QoS lab with preserved DSCP markings and priority queue validation |
-| `Port Security.pkt` | Access-layer security lab with sticky learning, manual secure MACs, and restrict-mode violations |
-| `DHCP Snooping.pkt` | Latest Layer 2 security lab with DHCP snooping, Dynamic ARP Inspection, rogue DHCP blocking, and rate-limit testing |
+| `labs/VTP.pkt` | VLAN propagation and switch domain setup |
+| `labs/VLAN (ROAS).pkt` | Router-on-a-stick and inter-VLAN routing |
+| `labs/VLAN (P2P).pkt` | Layer 3 switching with SVIs and routed links |
+| `labs/RSTP.pkt` | Spanning-tree protection features |
+| `labs/Etherchannel.pkt` | Aggregated uplinks and redundancy |
+| `labs/FHRP.pkt` | IPv4 default gateway redundancy |
+| `labs/OSPF.pkt` | Dynamic routing and path preference |
+| `labs/IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
+| `labs/Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
+| `labs/DNS & DHCP.pkt` | Centralized DNS and DHCP services added to the services VLAN |
+| `labs/SNMP & Syslog.pkt` | SNMP communities and syslog testing to the admin server |
+| `labs/NAT.pkt` | `EDGE` PAT overload for inside local networks and internet access |
+| `labs/SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
+| `labs/QoS.pkt` | VoIP and QoS lab with preserved DSCP markings and priority queue validation |
+| `labs/Port Security.pkt` | Access-layer security lab with sticky learning, manual secure MACs, and restrict-mode violations |
+| `labs/DHCP Snooping.pkt` | Latest Layer 2 security lab with DHCP snooping, Dynamic ARP Inspection, rogue DHCP blocking, and rate-limit testing |
 
 ## Topology Snapshot
 
@@ -85,14 +85,14 @@ The current lab design includes:
 
 - Five VLANs: HR, Sales, IT, Services, and Voice
 - Two distribution / multilayer switches acting as primary and backup gateways
-- An EtherChannel bundle between `DSW3-MAIN` and `DSW3-BACKUP` for inter-switch redundancy
+- An EtherChannel bundle between `DSW1-MAIN` and `DSW2-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
 - Dual upstream routers connected to the `EDGE` internet router
 - Dynamic NAT overload (PAT) on `EDGE` for inside local addresses reaching outside networks
 - Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
 - DHCP scope delivery for data VLANs `10`, `20`, and `30`, plus the voice VLAN `100`
 - Cisco IP phones added at the access layer with a dedicated `VLAN 100` voice segment
-- QoS policy testing with DSCP marking at `ASW1`, DSCP trust at `DSW3-MAIN` and `DSW3-BACKUP`, and egress priority queueing on routed devices such as `CR3`, `CR4`, and `EDGE`
+- QoS policy testing with DSCP marking at `ASW1`, DSCP trust at `DSW1-MAIN` and `DSW2-BACKUP`, and egress priority queueing on routed devices such as `CR1`, `CR2`, and `EDGE`
 - Port security on access ports, using sticky learning on `ASW1` and `ASW2` plus manually configured secure MAC addresses on `ASW3`
 - DHCP snooping enabled to protect the centralized DHCP design from rogue DHCP offers and DHCP message flooding
 - Dynamic ARP Inspection enabled on the same access-layer VLANs to validate ARP packets against trusted bindings
@@ -105,10 +105,10 @@ The current lab design includes:
 
 | VLAN | Department | IPv4 Subnet | IPv4 Gateway | IPv6 Subnet | IPv6 Router Addressing |
 |---|---|---|---|---|---|
-| 10 | HR | `192.168.10.0/24` | `192.168.10.254` | `2001:DB8:10::/64` | `2001:DB8:10::252` (DSW3-main), `2001:DB8:10::253` (DSW3-backup) |
-| 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::252` (DSW3-main), `2001:DB8:20::253` (DSW3-backup) |
-| 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::252` (DSW3-main), `2001:DB8:30::253` (DSW3-backup) |
-| 40 | Services | `192.168.40.0/24` | `192.168.40.254` | `2001:DB8:40::/64` | `2001:DB8:40::252` (DSW3-main), `2001:DB8:40::253` (DSW3-backup) |
+| 10 | HR | `192.168.10.0/24` | `192.168.10.254` | `2001:DB8:10::/64` | `2001:DB8:10::252` (`DSW1-MAIN`), `2001:DB8:10::253` (`DSW2-BACKUP`) |
+| 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::252` (`DSW1-MAIN`), `2001:DB8:20::253` (`DSW2-BACKUP`) |
+| 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::252` (`DSW1-MAIN`), `2001:DB8:30::253` (`DSW2-BACKUP`) |
+| 40 | Services | `192.168.40.0/24` | `192.168.40.254` | `2001:DB8:40::/64` | `2001:DB8:40::252` (`DSW1-MAIN`), `2001:DB8:40::253` (`DSW2-BACKUP`) |
 | 100 | Voice | `192.168.100.0/24` | `192.168.100.254` | Not configured in this lab | Not configured in this lab |
 
 ### Example End-Host Addressing
@@ -149,8 +149,8 @@ Replace `x` with the VLAN number such as `10`, `20`, `30`, `40`, or `100`.
 
 | Link | IPv4 Subnet | Internal Router Address | EDGE / Next-Hop Address | IPv6 Subnet | Internal Router IPv6 | EDGE IPv6 |
 |---|---|---|---|---|---|---|
-| R3 to EDGE | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
-| R4 to EDGE | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
+| CR1 to EDGE | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
+| CR2 to EDGE | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
 | EDGE to Internet | `203.0.113.8/30` | `203.0.113.9` | `203.0.113.10` | Not used | Not used | Not used |
 
 ## VTP Documentation
@@ -160,12 +160,12 @@ This section documents the basic VTP setup used in the switching portion of the 
 ### Design Summary
 
 - The VTP domain is configured as `cisco`.
-- `DSW3-MAIN` is configured as the VTP server for VLAN management.
+- `DSW1-MAIN` is configured as the VTP server for VLAN management.
 - This setup is kept intentionally simple because the lab is also being used to study VLAN provisioning and future automation or scripting workflows.
 
 ### Example Configuration
 
-#### DSW3-MAIN
+#### DSW1-MAIN
 
 ```cisco
 vtp domain cisco
@@ -193,21 +193,21 @@ This section documents the PVST configuration used to stabilize Layer 2 paths an
 ### Design Summary
 
 - PVST is enabled for per-VLAN spanning-tree control.
-- `DSW3-MAIN` is configured as the root primary switch for all VLANs.
-- `DSW3-BACKUP` is configured as the root secondary switch for all VLANs.
+- `DSW1-MAIN` is configured as the root primary switch for all VLANs.
+- `DSW2-BACKUP` is configured as the root secondary switch for all VLANs.
 - STP protections, including PortFast, BPDU Guard, and Root Guard, are applied on the access switches rather than on the distribution switches.
 - On the access switches, these features speed host connectivity and help prevent accidental switch connections or unexpected root-bridge changes.
 
 ### Example Configuration
 
-#### DSW3-MAIN
+#### DSW1-MAIN
 
 ```cisco
 spanning-tree mode pvst
 spanning-tree vlan 1,10,20,30,40,100 root primary
 ```
 
-#### DSW3-BACKUP
+#### DSW2-BACKUP
 
 ```cisco
 spanning-tree mode pvst
@@ -233,11 +233,11 @@ show spanning-tree inconsistentports
 
 ## EtherChannel Documentation
 
-This section documents the EtherChannel link configured between `DSW3-MAIN` and `DSW3-BACKUP`.
+This section documents the EtherChannel link configured between `DSW1-MAIN` and `DSW2-BACKUP`.
 
 ### Design Summary
 
-- The direct inter-switch uplinks between `DSW3-MAIN` and `DSW3-BACKUP` are bundled into a single EtherChannel for redundancy and additional bandwidth.
+- The direct inter-switch uplinks between `DSW1-MAIN` and `DSW2-BACKUP` are bundled into a single EtherChannel for redundancy and additional bandwidth.
 - This keeps the distribution layer resilient because the logical port-channel remains available if one member link fails.
 - The bundled inter-switch link also simplifies spanning-tree operation by presenting the parallel links as one logical path.
 
@@ -263,10 +263,10 @@ This section documents the OSPF design used for dynamic routing and failover beh
 
 | Device | Loopback Address | OSPF Router ID |
 |---|---|---|
-| `DSW3-MAIN` | `1.1.1.1/32` | `1.1.1.1` |
-| `DSW3-BACKUP` | `2.2.2.2/32` | `2.2.2.2` |
-| `R3` | `3.3.3.3/32` | `3.3.3.3` |
-| `R4` | `4.4.4.4/32` | `4.4.4.4` |
+| `DSW1-MAIN` | `1.1.1.1/32` | `1.1.1.1` |
+| `DSW2-BACKUP` | `2.2.2.2/32` | `2.2.2.2` |
+| `CR1` | `3.3.3.3/32` | `3.3.3.3` |
+| `CR2` | `4.4.4.4/32` | `4.4.4.4` |
 | `EDGE` | `5.5.5.5/32` | `5.5.5.5` |
 
 ### OSPF Design Summary
@@ -281,7 +281,7 @@ This section documents the OSPF design used for dynamic routing and failover beh
 
 ### Example Loopback and Router ID Configuration
 
-#### DSW3-MAIN
+#### DSW1-MAIN
 
 ```cisco
 interface loopback0
@@ -296,7 +296,7 @@ router ospf 1
  network 192.168.40.0 0.0.0.255 area 0
 ```
 
-#### DSW3-BACKUP
+#### DSW2-BACKUP
 
 ```cisco
 interface loopback0
@@ -311,7 +311,7 @@ router ospf 1
  network 192.168.40.0 0.0.0.255 area 0
 ```
 
-#### R3
+#### CR1
 
 ```cisco
 interface loopback0
@@ -321,7 +321,7 @@ router ospf 1
  router-id 3.3.3.3
 ```
 
-#### R4
+#### CR2
 
 ```cisco
 interface loopback0
@@ -410,7 +410,7 @@ show ip protocols
 
 ## Extended ACL Documentation
 
-This section documents the named extended ACL policy applied on both `DSW3-main` and `DSW3-backup` in the Packet Tracer lab.
+This section documents the named extended ACL policy applied on both `DSW1-MAIN` and `DSW2-BACKUP` in the Packet Tracer lab.
 
 ### Policy Summary
 
@@ -418,7 +418,7 @@ This section documents the named extended ACL policy applied on both `DSW3-main`
 - `HR_OUT` is applied outbound on `VLAN 10` and permits the matching DHCP, DNS, and FTP return traffic back toward the HR subnet.
 - `SALES_IN` is applied inbound on `VLAN 20` and permits DHCP first, DNS second, and HTTPS third for Sales clients.
 - `SALES_OUT` is applied outbound on `VLAN 20` and permits the matching DHCP, DNS, and HTTPS return traffic back toward the Sales subnet.
-- The same ACL definitions and interface bindings are configured on both `DSW3-main` and `DSW3-backup` so the policy remains consistent during gateway failover.
+- The same ACL definitions and interface bindings are configured on both `DSW1-MAIN` and `DSW2-BACKUP` so the policy remains consistent during gateway failover.
 - Traffic that does not match those permitted services is dropped by the ACLs' implicit deny.
 
 ### Service Test Setup
@@ -428,7 +428,7 @@ This section documents the named extended ACL policy applied on both `DSW3-main`
 - HR clients use DNS plus FTP to reach the file server, while Sales clients use DNS plus HTTPS to reach the web server.
 - The HR FTP validation account is username `hr` with password `hr`.
 
-### ACL Configuration on DSW3-main and DSW3-backup
+### ACL Configuration on DSW1-MAIN and DSW2-BACKUP
 
 ```cisco
 ip access-list extended HR_IN
@@ -506,9 +506,9 @@ show hosts
 
 ### Packet Tracer Note
 
-Packet Tracer has a known issue where extended ACLs can remain in the saved configuration but stop filtering correctly after the lab is closed and reopened. In this lab, the workaround is to re-apply the ACL to each VLAN interface on `DSW3-main` and `DSW3-backup` after every Packet Tracer restart. The issue is described in this Cisco Community thread: <https://community.cisco.com/t5/switching/packet-tracer-acls-remain-in-config-but-stop-working-after/m-p/5378191#M587005>.
+Packet Tracer has a known issue where extended ACLs can remain in the saved configuration but stop filtering correctly after the lab is closed and reopened. In this lab, the workaround is to re-apply the ACL to each VLAN interface on `DSW1-MAIN` and `DSW2-BACKUP` after every Packet Tracer restart. The issue is described in this Cisco Community thread: <https://community.cisco.com/t5/switching/packet-tracer-acls-remain-in-config-but-stop-working-after/m-p/5378191#M587005>.
 
-Use the following commands to re-apply the ACL bindings on `DSW3-main` and `DSW3-backup`:
+Use the following commands to re-apply the ACL bindings on `DSW1-MAIN` and `DSW2-BACKUP`:
 
 ```cisco
 interface vlan 10
@@ -522,7 +522,7 @@ interface vlan 20
 
 ## DNS and DHCP Documentation
 
-This section documents the centralized services added in the `DNS & DHCP.pkt` lab.
+This section documents the centralized services added in the `labs/DNS & DHCP.pkt` lab.
 
 ### DNS Summary
 
@@ -580,13 +580,13 @@ show running-config | include clock timezone|ntp server
 
 ## SNMP and Syslog Documentation
 
-This section documents the basic monitoring features added in the `SNMP & Syslog.pkt` lab.
+This section documents the basic monitoring features added in the `labs/SNMP & Syslog.pkt` lab.
 
 ### SNMP Summary
 
-- `R3` is configured for SNMP community-string based monitoring.
+- `CR1` is configured for SNMP community-string based monitoring.
 - The configured community strings are `ciscorw` for read/write access and `ciscoro` for read-only access.
-- To test SNMP, use the Packet Tracer MIB Browser on any host and query `R3` at `3.3.3.3` or `192.168.1.254` on UDP port `161`.
+- To test SNMP, use the Packet Tracer MIB Browser on any host and query `CR1` at `3.3.3.3` or `192.168.1.254` on UDP port `161`.
 
 ### MIB Browser Advanced Tab Example Values
 
@@ -598,7 +598,7 @@ This section documents the basic monitoring features added in the `SNMP & Syslog
 | Write Community | `ciscorw` |
 | SNMP Version | `v1` |
 
-### R3 SNMP Configuration
+### CR1 SNMP Configuration
 
 ```cisco
 snmp-server community ciscorw RW
@@ -607,15 +607,15 @@ snmp-server community ciscoro RO
 
 ### SNMP Test Screenshot
 
-![Admin server MIB Browser SNMP test against R3](screenshots/admin-server-snmp-test-r3.png)
+![Admin server MIB Browser SNMP test against CR1](screenshots/admin-server-snmp-test-r3.png)
 
 ### Syslog Summary
 
-- Syslog is enabled only on `DSW3-main` in this lab version for testing.
+- Syslog is enabled only on `DSW1-MAIN` in this lab version for testing.
 - The admin server at `192.168.40.2` is configured as the syslog receiver.
 - Trap logging is configured at the `debugging` level in Packet Tracer.
 
-### DSW3-main Syslog Configuration
+### DSW1-MAIN Syslog Configuration
 
 ```cisco
 logging trap debugging
@@ -624,7 +624,7 @@ logging 192.168.40.2
 
 ### Syslog Test Screenshot
 
-![Admin server syslog test showing messages from DSW3-main](screenshots/admin-server-syslog-test-dsw3-main.png)
+![Admin server syslog test showing messages from DSW1-MAIN](screenshots/admin-server-syslog-test-dsw3-main.png)
 
 ### Packet Tracer Limitations
 
@@ -639,7 +639,7 @@ This section documents the SSH access restriction used for device management in 
 
 - SSH access to the network devices is limited to the IT subnet `192.168.30.0/24`.
 - A standard ACL named `SSH_IN` is applied inbound on the VTY lines to restrict which hosts can open SSH sessions.
-- For demo and testing, only `DSW3-MAIN` and `DSW3-BACKUP` are SSH-enabled devices.
+- For demo and testing, only `DSW1-MAIN` and `DSW2-BACKUP` are SSH-enabled devices.
 - The local SSH test credentials are username `it` and password `ccna`.
 - This keeps management access separated from the HR and Sales user VLANs.
 
@@ -677,8 +677,8 @@ ssh it@192.168.30.252
 ssh it@192.168.30.253
 ```
 
-- `192.168.30.252` = `DSW3-MAIN`
-- `192.168.30.253` = `DSW3-BACKUP`
+- `192.168.30.252` = `DSW1-MAIN`
+- `192.168.30.253` = `DSW2-BACKUP`
 
 ### Verification Commands
 
@@ -696,7 +696,7 @@ This section documents the VoIP baseline used in the Packet Tracer lab.
 - Four IP phones, `PH1` through `PH4`, are added to the access layer for call testing.
 - The phones use a dedicated `VLAN 100` voice segment while the attached PCs stay in their existing data VLANs.
 - The voice network uses `192.168.100.0/24` for IPv4.
-- Both `DSW3-MAIN` and `DSW3-BACKUP` carry the voice VLAN so phone reachability survives the redundant distribution design.
+- Both `DSW1-MAIN` and `DSW2-BACKUP` carry the voice VLAN so phone reachability survives the redundant distribution design.
 - The telephony setup is intentionally lightweight for CCNA practice: register the phones, assign extensions, and generate voice traffic that can be classified by the QoS policy.
 
 ### Access Port Pattern
@@ -713,7 +713,7 @@ interface <phone-access-port>
 
 ### Example CME / Telephony Baseline
 
-The current Packet Tracer call-processing baseline on `R3` uses the following CME values:
+The current Packet Tracer call-processing baseline on `CR1` uses the following CME values:
 
 ```cisco
 telephony-service
@@ -770,13 +770,13 @@ show telephony-service ephone
 
 ## QoS Documentation
 
-This section documents the voice-priority QoS policy used in the `QoS.pkt` lab.
+This section documents the voice-priority QoS policy used in the `labs/QoS.pkt` lab.
 
 ### QoS Summary
 
 - Voice traffic is classified with ACL `VOICE-TRAFFIC` and class-map `VOICE`.
 - Policy-map `MARK-VOICE` sets matched traffic to `dscp ef` and places it in the low-latency queue with `priority percent 30`.
-- In the intended end-to-end design, `ASW1` marks voice traffic with DSCP, `DSW3-MAIN` and `DSW3-BACKUP` trust and preserve those markings, and routed devices such as `CR3`, `CR4`, and `EDGE` enforce priority queueing on egress.
+- In the intended end-to-end design, `ASW1` marks voice traffic with DSCP, `DSW1-MAIN` and `DSW2-BACKUP` trust and preserve those markings, and routed devices such as `CR1`, `CR2`, and `EDGE` enforce priority queueing on egress.
 - Because Packet Tracer QoS behavior is limited, the lab uses ACL-based voice matching as a practical workaround for consistent voice classification.
 
 ### Example Classification and Marking Policy
@@ -801,9 +801,9 @@ policy-map MARK-VOICE
 
 For the active Packet Tracer QoS demo, the test call is placed between `PH1` (`1001`) and `PH3` (`1003`), with both phones connected to `ASW1`. To generate traffic for validation, place a call from `PH1` to `PH3` or from `PH3` to `PH1`, then verify that the DSCP markings and QoS counters increment as expected.
 
-The screenshot below shows `CR3` verifying the live policy on `GigabitEthernet0/1`. The `VOICE` class has matched traffic, the packets are being marked as `dscp ef`, and the strict-priority queue is active with `0` drops during the test.
+The screenshot below shows `CR1` verifying the live policy on `GigabitEthernet0/0`. The `VOICE` class has matched traffic, the packets are being marked as `dscp ef`, and the strict-priority queue is active with `0` drops during the test.
 
-![CR3 QoS policy verification showing matched voice traffic, DSCP EF marking, and strict priority queueing on GigabitEthernet0/1](screenshots/qos-test.png)
+![CR1 QoS policy verification showing matched voice traffic, DSCP EF marking, and strict priority queueing on GigabitEthernet0/0](screenshots/qos-test.png)
 
 ### Verification Commands
 
@@ -829,13 +829,13 @@ interface g1/0/1
  service-policy input MARK-VOICE
 interface g1/0/2
  service-policy input MARK-VOICE
-CR3
+CR1
 interface g0/0
  service-policy output MARK-VOICE
 interface g0/1
  service-policy output MARK-VOICE
 !
-CR4
+CR2
 interface g0/1
  service-policy output MARK-VOICE
 !
@@ -848,7 +848,7 @@ interface g0/1
 
 ## Port Security Documentation
 
-This section documents the access-layer port security settings added in the `Port Security.pkt` lab.
+This section documents the access-layer port security settings added in the `labs/Port Security.pkt` lab.
 
 ### Port Security Summary
 
@@ -913,7 +913,7 @@ show running-config interface <interface>
 
 ## DHCP Snooping and DAI Documentation
 
-This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection controls added in the latest `DHCP Snooping.pkt` lab.
+This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection controls added in the latest `labs/DHCP Snooping.pkt` lab.
 
 ### DHCP Snooping and DAI Summary
 
@@ -970,8 +970,8 @@ ip arp inspection validate src-mac dst-mac ip
 | `ASW1` | `GigabitEthernet1/0/3` - `GigabitEthernet1/0/4` | Uplinks toward the distribution switches |
 | `ASW2` | `GigabitEthernet1/0/1` - `GigabitEthernet1/0/2` | Uplinks toward the distribution switches |
 | `ASW3` | `GigabitEthernet1/0/4` | trusted DHCP path between ASW3 and DHCP Server |
-| `DSW3-MAIN` | `GigabitEthernet1/0/5` | Link connected to `ASW3` |
-| `DSW3-BACKUP` | `GigabitEthernet1/0/5` | Link connected to `ASW3` |
+| `DSW1-MAIN` | `GigabitEthernet1/0/5` | Link connected to `ASW3` |
+| `DSW2-BACKUP` | `GigabitEthernet1/0/5` | Link connected to `ASW3` |
 
 ### Rogue DHCP Server Test
 
@@ -1034,7 +1034,7 @@ show running-config interface <interface>
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
 - I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read. I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
-- In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the DSW3-main and DSW3-backup SVI addresses** because an IPv6 virtual gateway is not used in this lab.
+- In Packet Tracer, **IPv4 uses FHRP virtual gateways**, while **IPv6 uses the `DSW1-MAIN` and `DSW2-BACKUP` SVI addresses** because an IPv6 virtual gateway is not used in this lab.
 - Redundancy features such as **FHRP, EtherChannel, and STP protections** are included to reflect real design patterns.
 - Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the data and voice VLANs, and the admin server providing DNS, NTP, and syslog reception.
 - SSH management access is intentionally restricted to **VLAN 30 / IT** by applying a standard ACL to the VTY lines.
@@ -1095,7 +1095,7 @@ Usable range: 192.168.100.1 - 192.168.100.254
 Broadcast address: 192.168.100.255
 Gateway: 192.168.100.254
 
-R3-EDGE P2P
+CR1-EDGE P2P
 Host bits: 2^2 = 4
 Mask: 255.255.255.252
 Network address: 203.0.113.0/30
@@ -1103,7 +1103,7 @@ Prefix: /30
 Usable range: 203.0.113.1 - 203.0.113.2
 Broadcast address: 203.0.113.3
 
-R4-EDGE P2P
+CR2-EDGE P2P
 Host bits: 2^2 = 4
 Mask: 255.255.255.252
 Network address: 203.0.113.4/30
