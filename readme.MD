@@ -58,7 +58,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 
 ## Lab Files
 
-These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the series is `labs/DHCP Snooping.pkt`.
+These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the series is `labs/ARP Inspection.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
@@ -77,7 +77,8 @@ These Packet Tracer labs are stored in `labs/` and show the progression of the t
 | `labs/SSH.pkt` | SSH management access enabled on distribution switches with IT VLAN restrictions |
 | `labs/QoS.pkt` | VoIP and QoS lab with preserved DSCP markings and priority queue validation |
 | `labs/Port Security.pkt` | Access-layer security lab with sticky learning, manual secure MACs, and restrict-mode violations |
-| `labs/DHCP Snooping.pkt` | Latest Layer 2 security lab with DHCP snooping, Dynamic ARP Inspection, rogue DHCP blocking, and rate-limit testing |
+| `labs/DHCP Snooping.pkt` | Layer 2 security lab with DHCP snooping, rogue DHCP blocking, and rate-limit testing |
+| `labs/ARP Inspection.pkt` | Latest Layer 2 security lab with Dynamic ARP Inspection added on top of DHCP snooping validation |
 
 ## Topology Snapshot
 
@@ -913,7 +914,7 @@ show running-config interface <interface>
 
 ## DHCP Snooping and DAI Documentation
 
-This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection controls added in the latest `labs/DHCP Snooping.pkt` lab.
+This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection controls carried forward into the latest `labs/ARP Inspection.pkt` lab.
 
 ### DHCP Snooping and DAI Summary
 
