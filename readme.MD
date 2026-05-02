@@ -89,6 +89,7 @@ The current lab design includes:
 - Two distribution / multilayer switches acting as primary and backup gateways
 - An EtherChannel bundle between `DSW1-MAIN` and `DSW2-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
+- Dual-homed routed uplinks between `CR1` / `CR2` and both distribution switches for load balancing and redundancy
 - Dual upstream routers connected to the `EDGE` internet router
 - Dynamic NAT overload (PAT) on `EDGE` for inside local addresses reaching outside networks
 - Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
@@ -228,6 +229,17 @@ The screenshots below show the HSRP state aligned with the spanning-tree load-ba
 #### DSW2-BACKUP HSRP State
 
 ![DSW2-BACKUP standby brief output showing VLANs 20 and 40 active while VLANs 10, 30, and 100 remain standby](screenshots/fhrp-ds-backup.png)
+
+### Distribution-to-Core Routed Uplinks
+
+The distribution switches and upstream routers use a dual-homed routed design on the `192.168.1.0/24` transit block. This gives both `CR1` and `CR2` a path to each distribution switch for load balancing and redundancy.
+
+| Link | Transit Network | Router Address | Distribution Switch Address |
+|---|---|---|---|
+| `CR1` to `DSW1-MAIN` | `192.168.1.0/24` | `192.168.1.254` | `192.168.1.253` |
+| `CR2` to `DSW2-BACKUP` | `192.168.1.0/24` | `192.168.1.252` | `192.168.1.251` |
+| `CR1` to `DSW2-BACKUP` | `192.168.1.0/24` | `192.168.1.250` | `192.168.1.249` |
+| `CR2` to `DSW1-MAIN` | `192.168.1.0/24` | `192.168.1.248` | `192.168.1.247` |
 
 ### Point-to-Point WAN Links
 
@@ -371,6 +383,7 @@ This section documents the OSPF design used for dynamic routing and failover beh
 - Each Layer 3 device uses a loopback interface to provide a stable OSPF router ID.
 - OSPF is configured in a single area only: `area 0`.
 - On the multilayer switches, VLAN SVIs are advertised through `network` statements with wildcard masks under the OSPF process.
+- The routed uplinks between `CR1` / `CR2` and the distribution switches use the shared `192.168.1.0/24` transit block in a dual-homed design for load balancing and redundancy.
 - Physical routed interfaces are enabled individually under the interface with `ip ospf 1 area 0`.
 - OSPF is used to advertise internal routed paths and upstream connectivity across the lab.
 - `EDGE` originates the default route into OSPF so the internal routers learn outside reachability.
@@ -1191,6 +1204,19 @@ Prefix: /24
 Usable range: 192.168.100.1 - 192.168.100.254
 Broadcast address: 192.168.100.255
 Gateway: 192.168.100.254
+
+Distribution-to-Core Transit Block
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.1.0/24
+Prefix: /24
+Usable range: 192.168.1.1 - 192.168.1.254
+Broadcast address: 192.168.1.255
+Assigned links:
+- CR1 192.168.1.254 <-> DSW1-MAIN 192.168.1.253
+- CR2 192.168.1.252 <-> DSW2-BACKUP 192.168.1.251
+- CR1 192.168.1.250 <-> DSW2-BACKUP 192.168.1.249
+- CR2 192.168.1.248 <-> DSW1-MAIN 192.168.1.247
 
 CR1-EDGE P2P
 Host bits: 2^2 = 4
