@@ -232,14 +232,13 @@ The screenshots below show the HSRP state aligned with the spanning-tree load-ba
 
 ### Distribution-to-Core Routed Uplinks
 
-The distribution switches and upstream routers use a dual-homed routed design on the `192.168.1.0/24` transit block. This gives both `CR1` and `CR2` a path to each distribution switch for load balancing and redundancy.
 
-| Link | Transit Network | Router Address | Distribution Switch Address |
-|---|---|---|---|
-| `CR1` to `DSW1-MAIN` | `192.168.1.0/24` | `192.168.1.254` | `192.168.1.253` |
-| `CR2` to `DSW2-BACKUP` | `192.168.1.0/24` | `192.168.1.252` | `192.168.1.251` |
-| `CR1` to `DSW2-BACKUP` | `192.168.1.0/24` | `192.168.1.250` | `192.168.1.249` |
-| `CR2` to `DSW1-MAIN` | `192.168.1.0/24` | `192.168.1.248` | `192.168.1.247` |
+| Link | IPv4 Subnet | Router Address | Distribution Switch Address | IPv6 Subnet | Router IPv6 | Distribution Switch IPv6 |
+|---|---|---|---|---|---|---|
+| `CR1` to `DSW1-MAIN` | `10.0.0.0/30` | `10.0.0.1` | `10.0.0.2` | `2001:DB8:0:0::/64` | `2001:DB8:0:0::1` | `2001:DB8:0:0::2` |
+| `CR1` to `DSW2-BACKUP` | `10.0.0.4/30` | `10.0.0.5` | `10.0.0.6` | `2001:DB8:0:1::/64` | `2001:DB8:0:1::1` | `2001:DB8:0:1::2` |
+| `CR2` to `DSW2-BACKUP` | `10.0.0.8/30` | `10.0.0.9` | `10.0.0.10` | `2001:DB8:0:2::/64` | `2001:DB8:0:2::1` | `2001:DB8:0:2::2` |
+| `CR2` to `DSW1-MAIN` | `10.0.0.12/30` | `10.0.0.13` | `10.0.0.14` | `2001:DB8:0:3::/64` | `2001:DB8:0:3::1` | `2001:DB8:0:3::2` |
 
 ### Point-to-Point WAN Links
 
@@ -383,7 +382,6 @@ This section documents the OSPF design used for dynamic routing and failover beh
 - Each Layer 3 device uses a loopback interface to provide a stable OSPF router ID.
 - OSPF is configured in a single area only: `area 0`.
 - On the multilayer switches, VLAN SVIs are advertised through `network` statements with wildcard masks under the OSPF process.
-- The routed uplinks between `CR1` / `CR2` and the distribution switches use the shared `192.168.1.0/24` transit block in a dual-homed design for load balancing and redundancy.
 - Physical routed interfaces are enabled individually under the interface with `ip ospf 1 area 0`.
 - OSPF is used to advertise internal routed paths and upstream connectivity across the lab.
 - `EDGE` originates the default route into OSPF so the internal routers learn outside reachability.
@@ -696,7 +694,7 @@ This section documents the basic monitoring features added in the `labs/SNMP & S
 
 - `CR1` is configured for SNMP community-string based monitoring.
 - The configured community strings are `ciscorw` for read/write access and `ciscoro` for read-only access.
-- To test SNMP, use the Packet Tracer MIB Browser on any host and query `CR1` at `3.3.3.3` or `192.168.1.254` on UDP port `161`.
+- To test SNMP, use the Packet Tracer MIB Browser on any host and query `CR1` at `3.3.3.3` or `10.0.0.1` on UDP port `161`.
 
 ### MIB Browser Advanced Tab Example Values
 
@@ -1205,18 +1203,47 @@ Usable range: 192.168.100.1 - 192.168.100.254
 Broadcast address: 192.168.100.255
 Gateway: 192.168.100.254
 
-Distribution-to-Core Transit Block
-Host bits: 2^8 = 256
-Mask: 255.255.255.0
-Network address: 192.168.1.0/24
-Prefix: /24
-Usable range: 192.168.1.1 - 192.168.1.254
-Broadcast address: 192.168.1.255
-Assigned links:
-- CR1 192.168.1.254 <-> DSW1-MAIN 192.168.1.253
-- CR2 192.168.1.252 <-> DSW2-BACKUP 192.168.1.251
-- CR1 192.168.1.250 <-> DSW2-BACKUP 192.168.1.249
-- CR2 192.168.1.248 <-> DSW1-MAIN 192.168.1.247
+Distribution to Core Routed P2P Links
+
+CR1-DSW1-MAIN
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 10.0.0.0/30
+Prefix: /30
+Usable range: 10.0.0.1 - 10.0.0.2
+Broadcast address: 10.0.0.3
+Assigned link: CR1 10.0.0.1 <-> DSW1-MAIN 10.0.0.2
+IPv6 pair: 2001:DB8:0:0::1 <-> 2001:DB8:0:0::2
+
+CR1-DSW2-BACKUP
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 10.0.0.4/30
+Prefix: /30
+Usable range: 10.0.0.5 - 10.0.0.6
+Broadcast address: 10.0.0.7
+Assigned link: CR1 10.0.0.5 <-> DSW2-BACKUP 10.0.0.6
+IPv6 pair: 2001:DB8:0:1::1 <-> 2001:DB8:0:1::2
+
+CR2-DSW2-BACKUP
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 10.0.0.8/30
+Prefix: /30
+Usable range: 10.0.0.9 - 10.0.0.10
+Broadcast address: 10.0.0.11
+Assigned link: CR2 10.0.0.9 <-> DSW2-BACKUP 10.0.0.10
+IPv6 pair: 2001:DB8:0:2::1 <-> 2001:DB8:0:2::2
+
+CR2-DSW1-MAIN
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 10.0.0.12/30
+Prefix: /30
+Usable range: 10.0.0.13 - 10.0.0.14
+Broadcast address: 10.0.0.15
+Assigned link: CR2 10.0.0.13 <-> DSW1-MAIN 10.0.0.14
+IPv6 pair: 2001:DB8:0:3::1 <-> 2001:DB8:0:3::2
 
 CR1-EDGE P2P
 Host bits: 2^2 = 4
