@@ -44,6 +44,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - RSTP, PortFast, BPDU Guard, and Root Guard
 - EtherChannel for redundancy and bandwidth
 - OSPF routing and failover path behavior
+- OSPF Equal-Cost Multi-Path (ECMP) across dual-homed routed links
 - HSRP for resilient IPv4 default gateways
 - IPv4 and IPv6 dual-stack addressing
 - Static routing, NAT/PAT, and WAN edge connectivity
@@ -70,7 +71,7 @@ These Packet Tracer labs are stored in `labs/` and show the progression of the t
 | `labs/Etherchannel.pkt` | Aggregated uplinks and redundancy |
 | `labs/HSRP.pkt` | HSRP active/standby IPv4 default gateway redundancy |
 | `labs/OSPF.pkt` | Dynamic routing and path preference |
-| `labs/Core Routers Redundancy.pkt` | Routed failover testing between `CR1`, `CR2`, and the distribution layer |
+| `labs/Core Routers Redundancy.pkt` | Routed failover and OSPF ECMP testing between `CR1`, `CR2`, and the distribution layer |
 | `labs/IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `labs/Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
 | `labs/DNS & DHCP.pkt` | Centralized DNS and DHCP services added to the services VLAN |
@@ -385,6 +386,7 @@ This section documents the OSPF design used for dynamic routing and failover beh
 - On the multilayer switches, VLAN SVIs are advertised through `network` statements with wildcard masks under the OSPF process.
 - Physical routed interfaces are enabled individually under the interface with `ip ospf 1 area 0`.
 - OSPF is used to advertise internal routed paths and upstream connectivity across the lab.
+- This topology implements OSPF Equal-Cost Multi-Path (ECMP) between the dual-homed distribution switches and core routers.
 - `EDGE` originates the default route into OSPF so the internal routers learn outside reachability.
 - The topology is designed so path preference and failover can be observed when the primary route changes or becomes unavailable.
 
@@ -459,11 +461,21 @@ show ip ospf interface brief
 show ip protocols
 ```
 
-### Verification Screenshot
+### Verification Screenshots
 
 The screenshot below shows `DSW1-MAIN` verifying a healthy and stable OSPF link-state database. The full topology is present, the shared segments are being advertised through the expected network LSAs, the external default route from `EDGE` is present, and there are no signs of database instability in the output.
 
 ![DSW1-MAIN show ip ospf database output showing a healthy area 0 link-state database and the external default route learned from EDGE](screenshots/ospf-database.png)
+
+The screenshots below show ECMP-enabled OSPF routing on both distribution switches.
+
+![DSW1-MAIN OSPF ECMP verification showing equal-cost paths installed](screenshots/ecmp-ospf-ds-main.png)
+
+![DSW2-BACKUP OSPF ECMP verification showing equal-cost paths installed](screenshots/ecmp-ospf-ds-backup.png)
+
+The image below shows simultaneous pings from `PC1`, `PC2`, and `PC3` load balancing across the dual core paths, including traffic using `CR2`.
+
+![ECMP simulation test showing simultaneous ICMP flows load balancing across CR1 and CR2](screenshots/ecmp-test.jpg)
 
 ### Core Redundancy Test Animation
 
