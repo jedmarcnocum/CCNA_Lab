@@ -59,7 +59,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 
 ## Lab Files
 
-These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the series is `labs/ARP Inspection.pkt`.
+These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the repository is `labs/Core Routers Redundancy.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
@@ -70,6 +70,7 @@ These Packet Tracer labs are stored in `labs/` and show the progression of the t
 | `labs/Etherchannel.pkt` | Aggregated uplinks and redundancy |
 | `labs/HSRP.pkt` | HSRP active/standby IPv4 default gateway redundancy |
 | `labs/OSPF.pkt` | Dynamic routing and path preference |
+| `labs/Core Routers Redundancy.pkt` | Routed failover testing between `CR1`, `CR2`, and the distribution layer |
 | `labs/IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `labs/Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
 | `labs/DNS & DHCP.pkt` | Centralized DNS and DHCP services added to the services VLAN |
@@ -463,6 +464,12 @@ show ip protocols
 The screenshot below shows `DSW1-MAIN` verifying a healthy and stable OSPF link-state database. The full topology is present, the shared segments are being advertised through the expected network LSAs, the external default route from `EDGE` is present, and there are no signs of database instability in the output.
 
 ![DSW1-MAIN show ip ospf database output showing a healthy area 0 link-state database and the external default route learned from EDGE](screenshots/ospf-database.png)
+
+### Core Redundancy Test Animation
+
+The animation below shows the core redundancy test in action. It captures failover behavior across the dual-homed routed design so the path change between `CR1`, `CR2`, and the distribution layer can be observed visually during testing.
+
+![Core redundancy failover animation showing routed path resiliency during testing](screenshots/core-redundancy-test.gif)
 
 ## NAT Documentation
 
