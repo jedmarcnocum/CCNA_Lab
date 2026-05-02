@@ -44,6 +44,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - RSTP, PortFast, BPDU Guard, and Root Guard
 - EtherChannel for redundancy and bandwidth
 - OSPF routing and failover path behavior
+- OSPF Equal-Cost Multi-Path (ECMP) across dual-homed routed links
 - HSRP for resilient IPv4 default gateways
 - IPv4 and IPv6 dual-stack addressing
 - Static routing, NAT/PAT, and WAN edge connectivity
@@ -59,7 +60,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 
 ## Lab Files
 
-These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the series is `labs/ARP Inspection.pkt`.
+These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the repository is `labs/Core Routers Redundancy.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
@@ -70,6 +71,7 @@ These Packet Tracer labs are stored in `labs/` and show the progression of the t
 | `labs/Etherchannel.pkt` | Aggregated uplinks and redundancy |
 | `labs/HSRP.pkt` | HSRP active/standby IPv4 default gateway redundancy |
 | `labs/OSPF.pkt` | Dynamic routing and path preference |
+| `labs/Core Routers Redundancy.pkt` | Routed failover and OSPF ECMP testing between `CR1`, `CR2`, and the distribution layer |
 | `labs/IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `labs/Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
 | `labs/DNS & DHCP.pkt` | Centralized DNS and DHCP services added to the services VLAN |
@@ -89,6 +91,7 @@ The current lab design includes:
 - Two distribution / multilayer switches acting as primary and backup gateways
 - An EtherChannel bundle between `DSW1-MAIN` and `DSW2-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
+- Dual-homed routed uplinks between `CR1` / `CR2` and both distribution switches for load balancing and redundancy
 - Dual upstream routers connected to the `EDGE` internet router
 - Dynamic NAT overload (PAT) on `EDGE` for inside local addresses reaching outside networks
 - Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
@@ -228,6 +231,16 @@ The screenshots below show the HSRP state aligned with the spanning-tree load-ba
 #### DSW2-BACKUP HSRP State
 
 ![DSW2-BACKUP standby brief output showing VLANs 20 and 40 active while VLANs 10, 30, and 100 remain standby](screenshots/fhrp-ds-backup.png)
+
+### Distribution-to-Core Routed Uplinks
+
+
+| Link | IPv4 Subnet | Router Address | Distribution Switch Address | IPv6 Subnet | Router IPv6 | Distribution Switch IPv6 |
+|---|---|---|---|---|---|---|
+| `CR1` to `DSW1-MAIN` | `10.0.0.0/30` | `10.0.0.1` | `10.0.0.2` | `2001:DB8:0:0::/64` | `2001:DB8:0:0::1` | `2001:DB8:0:0::2` |
+| `CR1` to `DSW2-BACKUP` | `10.0.0.4/30` | `10.0.0.5` | `10.0.0.6` | `2001:DB8:0:1::/64` | `2001:DB8:0:1::1` | `2001:DB8:0:1::2` |
+| `CR2` to `DSW2-BACKUP` | `10.0.0.8/30` | `10.0.0.9` | `10.0.0.10` | `2001:DB8:0:2::/64` | `2001:DB8:0:2::1` | `2001:DB8:0:2::2` |
+| `CR2` to `DSW1-MAIN` | `10.0.0.12/30` | `10.0.0.13` | `10.0.0.14` | `2001:DB8:0:3::/64` | `2001:DB8:0:3::1` | `2001:DB8:0:3::2` |
 
 ### Point-to-Point WAN Links
 
@@ -373,6 +386,7 @@ This section documents the OSPF design used for dynamic routing and failover beh
 - On the multilayer switches, VLAN SVIs are advertised through `network` statements with wildcard masks under the OSPF process.
 - Physical routed interfaces are enabled individually under the interface with `ip ospf 1 area 0`.
 - OSPF is used to advertise internal routed paths and upstream connectivity across the lab.
+- This topology implements OSPF Equal-Cost Multi-Path (ECMP) between the dual-homed distribution switches and core routers.
 - `EDGE` originates the default route into OSPF so the internal routers learn outside reachability.
 - The topology is designed so path preference and failover can be observed when the primary route changes or becomes unavailable.
 
@@ -447,11 +461,27 @@ show ip ospf interface brief
 show ip protocols
 ```
 
-### Verification Screenshot
+### Verification Screenshots
 
 The screenshot below shows `DSW1-MAIN` verifying a healthy and stable OSPF link-state database. The full topology is present, the shared segments are being advertised through the expected network LSAs, the external default route from `EDGE` is present, and there are no signs of database instability in the output.
 
 ![DSW1-MAIN show ip ospf database output showing a healthy area 0 link-state database and the external default route learned from EDGE](screenshots/ospf-database.png)
+
+The screenshots below show ECMP-enabled OSPF routing on both distribution switches.
+
+![DSW1-MAIN OSPF ECMP verification showing equal-cost paths installed](screenshots/ecmp-ospf-ds-main.png)
+
+![DSW2-BACKUP OSPF ECMP verification showing equal-cost paths installed](screenshots/ecmp-ospf-ds-backup.png)
+
+The image below shows simultaneous pings from `PC1`, `PC2`, and `PC3` load balancing across the dual core paths, including traffic using `CR2`.
+
+![ECMP simulation test showing simultaneous ICMP flows load balancing across CR1 and CR2](screenshots/ecmp-test.jpg)
+
+### Core Redundancy Test Animation
+
+The animation below shows the core redundancy test in action. It captures failover behavior across the dual-homed routed design so the path change between `CR1`, `CR2`, and the distribution layer can be observed visually during testing.
+
+![Core redundancy failover animation showing routed path resiliency during testing](screenshots/core-redundancy-test.gif)
 
 ## NAT Documentation
 
@@ -683,7 +713,7 @@ This section documents the basic monitoring features added in the `labs/SNMP & S
 
 - `CR1` is configured for SNMP community-string based monitoring.
 - The configured community strings are `ciscorw` for read/write access and `ciscoro` for read-only access.
-- To test SNMP, use the Packet Tracer MIB Browser on any host and query `CR1` at `3.3.3.3` or `192.168.1.254` on UDP port `161`.
+- To test SNMP, use the Packet Tracer MIB Browser on any host and query `CR1` at `3.3.3.3` or `10.0.0.1` on UDP port `161`.
 
 ### MIB Browser Advanced Tab Example Values
 
@@ -1191,6 +1221,48 @@ Prefix: /24
 Usable range: 192.168.100.1 - 192.168.100.254
 Broadcast address: 192.168.100.255
 Gateway: 192.168.100.254
+
+Distribution to Core Routed P2P Links
+
+CR1-DSW1-MAIN
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 10.0.0.0/30
+Prefix: /30
+Usable range: 10.0.0.1 - 10.0.0.2
+Broadcast address: 10.0.0.3
+Assigned link: CR1 10.0.0.1 <-> DSW1-MAIN 10.0.0.2
+IPv6 pair: 2001:DB8:0:0::1 <-> 2001:DB8:0:0::2
+
+CR1-DSW2-BACKUP
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 10.0.0.4/30
+Prefix: /30
+Usable range: 10.0.0.5 - 10.0.0.6
+Broadcast address: 10.0.0.7
+Assigned link: CR1 10.0.0.5 <-> DSW2-BACKUP 10.0.0.6
+IPv6 pair: 2001:DB8:0:1::1 <-> 2001:DB8:0:1::2
+
+CR2-DSW2-BACKUP
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 10.0.0.8/30
+Prefix: /30
+Usable range: 10.0.0.9 - 10.0.0.10
+Broadcast address: 10.0.0.11
+Assigned link: CR2 10.0.0.9 <-> DSW2-BACKUP 10.0.0.10
+IPv6 pair: 2001:DB8:0:2::1 <-> 2001:DB8:0:2::2
+
+CR2-DSW1-MAIN
+Host bits: 2^2 = 4
+Mask: 255.255.255.252
+Network address: 10.0.0.12/30
+Prefix: /30
+Usable range: 10.0.0.13 - 10.0.0.14
+Broadcast address: 10.0.0.15
+Assigned link: CR2 10.0.0.13 <-> DSW1-MAIN 10.0.0.14
+IPv6 pair: 2001:DB8:0:3::1 <-> 2001:DB8:0:3::2
 
 CR1-EDGE P2P
 Host bits: 2^2 = 4
