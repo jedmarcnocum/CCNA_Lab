@@ -232,6 +232,14 @@ The screenshots below show the HSRP state aligned with the spanning-tree load-ba
 
 ![DSW2-BACKUP standby brief output showing VLANs 20 and 40 active while VLANs 10, 30, and 100 remain standby](screenshots/fhrp-ds-backup.png)
 
+### Distribution-to-Distribution Routed Link
+
+The port-channel between `DSW1-MAIN` and `DSW2-BACKUP` is now configured as a Layer 3 routed interface (no switchport mode) with a `/30` point-to-point connection.
+
+| Link | IPv4 Subnet | DSW1-MAIN Address | DSW2-BACKUP Address | IPv6 Subnet | DSW1-MAIN IPv6 | DSW2-BACKUP IPv6 |
+|---|---|---|---|---|---|---|
+| `DSW1-MAIN` to `DSW2-BACKUP` | `10.12.12.0/30` | `10.12.12.1` | `10.12.12.2` | `2001:DB8:0:12::/64` | `2001:DB8:0:12::1` | `2001:DB8:0:12::2` |
+
 ### Distribution-to-Core Routed Uplinks
 
 
@@ -254,6 +262,8 @@ The screenshots below show the HSRP state aligned with the spanning-tree load-ba
 
 Static routes are intentionally used for IPv6 in this lab for practice instead of OSPFv3.
 
+On the core routers, the internal IPv6 static routes are aligned with the HSRP active gateway split. The preferred path follows the distribution switch that is active for that VLAN.
+
 | Device | Destination Prefixes | Exit Interface | Next Hop | Purpose |
 |---|---|---|---|---|
 | `EDGE` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/0` | `2001:DB8:113:1::1` | Reach internal VLANs through `CR1` |
@@ -263,10 +273,16 @@ Static routes are intentionally used for IPv6 in this lab for practice instead o
 | `DSW1-MAIN` | `::/0` | `g1/0/7` | `2001:DB8:0:3::1` | Secondary upstream path through `CR2` |
 | `DSW2-BACKUP` | `::/0` | `g1/0/4` | `2001:DB8:0:2::1` | Primary upstream path through `CR2` |
 | `DSW2-BACKUP` | `::/0` | `g1/0/7` | `2001:DB8:0:1::1` | Secondary upstream path through `CR1` |
-| `CR1` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/0` | `2001:DB8:0:0::2` | Reach VLANs through `DSW1-MAIN` |
-| `CR1` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/2` | `2001:DB8:0:1::2` | Reach VLANs through `DSW2-BACKUP` |
-| `CR2` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/0` | `2001:DB8:0:2::2` | Reach VLANs through `DSW2-BACKUP` |
-| `CR2` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/2` | `2001:DB8:0:3::2` | Reach VLANs through `DSW1-MAIN` |
+| `CR1` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/0` | `2001:DB8:0:0::2` | Primary path through `DSW1-MAIN` for VLANs active on `DSW1-MAIN` |
+| `CR1` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/2` | `2001:DB8:0:1::2` | Floating backup path through `DSW2-BACKUP` with administrative distance `10` |
+| `CR1` | `2001:DB8:20::/64` | `g0/2` | `2001:DB8:0:1::2` | Primary path through `DSW2-BACKUP` for VLANs active on `DSW2-BACKUP` |
+| `CR1` | `2001:DB8:20::/64` | `g0/0` | `2001:DB8:0:0::2` | Floating backup path through `DSW1-MAIN` with administrative distance `10` |
+| `CR1` | `2001:DB8:40::/64` | Depends on active HSRP design | Depends on active HSRP design | Follow the preferred active distribution switch, with the other path configured as floating backup if used |
+| `CR2` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/2` | `2001:DB8:0:3::2` | Primary path through `DSW1-MAIN` for VLANs active on `DSW1-MAIN` |
+| `CR2` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/0` | `2001:DB8:0:2::2` | Floating backup path through `DSW2-BACKUP` with administrative distance `10` |
+| `CR2` | `2001:DB8:20::/64` | `g0/0` | `2001:DB8:0:2::2` | Primary path through `DSW2-BACKUP` for VLANs active on `DSW2-BACKUP` |
+| `CR2` | `2001:DB8:20::/64` | `g0/2` | `2001:DB8:0:3::2` | Floating backup path through `DSW1-MAIN` with administrative distance `10` |
+| `CR2` | `2001:DB8:40::/64` | Depends on active HSRP design | Depends on active HSRP design | Follow the preferred active distribution switch, with the other path configured as floating backup if used |
 | `INTERNET` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `GigabitEthernet0/0` | `2001:DB8:113:3::2` | Return internal VLAN traffic toward `EDGE` |
 
 ## VTP Documentation
@@ -359,28 +375,35 @@ This section documents the EtherChannel link configured between `DSW1-MAIN` and 
 
 ### Design Summary
 
-- The direct inter-switch uplinks between `DSW1-MAIN` and `DSW2-BACKUP` are bundled into a single EtherChannel for redundancy and additional bandwidth.
-- This keeps the distribution layer resilient because the logical port-channel remains available if one member link fails.
-- The bundled inter-switch link also simplifies spanning-tree operation by presenting the parallel links as one logical path.
+- The Layer 3 Port-Channel between distribution switches provides a routed interconnect for deterministic traffic flow, inter-VLAN reachability, and resiliency. It also forms an OSPF adjacency for IPv4, enabling dynamic routing and fast convergence while eliminating Layer 2 dependencies like STP and preventing suboptimal forwarding.
+  
 
 ### Intended Behavior
 
 - Traffic between the two multilayer switches can continue flowing even if a single physical member link goes down.
-- The switches treat the port-channel as one logical connection instead of separate parallel trunks.
-- The EtherChannel provides both redundancy and higher aggregate throughput across the distribution pair.
+- The switches treat the port-channel as one logical routed connection instead of separate parallel trunks.
+- The EtherChannel provides both redundancy and higher aggregate throughput for the routed uplink.
 - The bundle is formed with **LACP**, so both ends negotiate the port-channel rather than relying on a static `on` configuration.
+
+### IPv4 and IPv6 Addressing
+
+| Device | IPv4 Address | IPv6 Address |
+|---|---|---|
+| `DSW1-MAIN` | `10.12.12.1/30` | `2001:DB8:0:12::1/64` |
+| `DSW2-BACKUP` | `10.12.12.2/30` | `2001:DB8:0:12::2/64` |
 
 ### Verification Commands
 
 ```cisco
 show etherchannel summary
-show interfaces trunk
-show spanning-tree
+show interfaces port-channel
+show ip interface port-channel
+show ipv6 interface port-channel
 ```
 
 ### Verification Screenshot
 
-The screenshot below shows the LACP EtherChannel up between `DSW1-MAIN` and `DSW2-BACKUP`, with `Port-channel1` in use and both member links bundled successfully.
+The screenshot below shows the LACP EtherChannel up between `DSW1-MAIN` and `DSW2-BACKUP`, with `Port-channel1` in use as a routed interface and both member links bundled successfully.
 
 ![EtherChannel summary showing Port-channel1 using LACP with both uplinks bundled between DSW1-MAIN and DSW2-BACKUP](screenshots/etherchannel-lacp-ds-main-backup.png)
 
