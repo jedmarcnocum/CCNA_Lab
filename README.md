@@ -266,8 +266,8 @@ On the core routers, the internal IPv6 static routes are aligned with the HSRP a
 
 | Device | Destination Prefixes | Exit Interface | Next Hop | Purpose |
 |---|---|---|---|---|
-| `EDGE` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/0` | `2001:DB8:113:1::1` | Reach internal VLANs through `CR1` |
-| `EDGE` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/1` | `2001:DB8:113:2::1` | Reach internal VLANs through `CR2` |
+| `EDGE` | `2001:DB8:10::/64`, `20::/64`, `30::/64` | `g0/0` | `2001:DB8:113:1::1` | Reach internal VLANs through `CR1` |
+| `EDGE` | `2001:DB8:10::/64`, `20::/64`, `30::/64` | `g0/1` | `2001:DB8:113:2::1` | Reach internal VLANs through `CR2` |
 | `EDGE` | `::/0` | `g0/2` | `2001:DB8:113:3::1` | Forward upstream toward `INTERNET` |
 | `DSW1-MAIN` | `::/0` | `g1/0/4` | `2001:DB8:0:0::1` | Primary upstream path through `CR1` |
 | `DSW1-MAIN` | `::/0` | `g1/0/7` | `2001:DB8:0:3::1` | Secondary upstream path through `CR2` |
@@ -277,13 +277,11 @@ On the core routers, the internal IPv6 static routes are aligned with the HSRP a
 | `CR1` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/2` | `2001:DB8:0:1::2` | Floating backup path through `DSW2-BACKUP` with administrative distance `10` |
 | `CR1` | `2001:DB8:20::/64` | `g0/2` | `2001:DB8:0:1::2` | Primary path through `DSW2-BACKUP` for VLANs active on `DSW2-BACKUP` |
 | `CR1` | `2001:DB8:20::/64` | `g0/0` | `2001:DB8:0:0::2` | Floating backup path through `DSW1-MAIN` with administrative distance `10` |
-| `CR1` | `2001:DB8:40::/64` | Depends on active HSRP design | Depends on active HSRP design | Follow the preferred active distribution switch, with the other path configured as floating backup if used |
 | `CR2` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/2` | `2001:DB8:0:3::2` | Primary path through `DSW1-MAIN` for VLANs active on `DSW1-MAIN` |
 | `CR2` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/0` | `2001:DB8:0:2::2` | Floating backup path through `DSW2-BACKUP` with administrative distance `10` |
 | `CR2` | `2001:DB8:20::/64` | `g0/0` | `2001:DB8:0:2::2` | Primary path through `DSW2-BACKUP` for VLANs active on `DSW2-BACKUP` |
 | `CR2` | `2001:DB8:20::/64` | `g0/2` | `2001:DB8:0:3::2` | Floating backup path through `DSW1-MAIN` with administrative distance `10` |
-| `CR2` | `2001:DB8:40::/64` | Depends on active HSRP design | Depends on active HSRP design | Follow the preferred active distribution switch, with the other path configured as floating backup if used |
-| `INTERNET` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `GigabitEthernet0/0` | `2001:DB8:113:3::2` | Return internal VLAN traffic toward `EDGE` |
+| `INTERNET` | `2001:DB8:10::/64`, `20::/64`, `30::/64` | `GigabitEthernet0/0` | `2001:DB8:113:3::2` | Return internal VLAN traffic toward `EDGE` |
 
 ## VTP Documentation
 
@@ -377,13 +375,6 @@ This section documents the EtherChannel link configured between `DSW1-MAIN` and 
 
 - The Layer 3 Port-Channel between distribution switches provides a routed interconnect for deterministic traffic flow, inter-VLAN reachability, and resiliency. It also forms an OSPF adjacency for IPv4, enabling dynamic routing and fast convergence while eliminating Layer 2 dependencies like STP and preventing suboptimal forwarding.
   
-
-### Intended Behavior
-
-- Traffic between the two multilayer switches can continue flowing even if a single physical member link goes down.
-- The switches treat the port-channel as one logical routed connection instead of separate parallel trunks.
-- The EtherChannel provides both redundancy and higher aggregate throughput for the routed uplink.
-- The bundle is formed with **LACP**, so both ends negotiate the port-channel rather than relying on a static `on` configuration.
 
 ### IPv4 and IPv6 Addressing
 
