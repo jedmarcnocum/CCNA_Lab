@@ -248,7 +248,26 @@ The screenshots below show the HSRP state aligned with the spanning-tree load-ba
 |---|---|---|---|---|---|---|
 | CR1 to EDGE | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
 | CR2 to EDGE | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
-| EDGE to Internet | `203.0.113.8/30` | `203.0.113.9` | `203.0.113.10` | Not used | Not used | Not used |
+| EDGE to Internet | `203.0.113.8/30` | `203.0.113.9` | `203.0.113.10` | `2001:DB8:113:3::/64` | `2001:DB8:113:3::1` | `2001:DB8:113:3::2` |
+
+### IPv6 Static Routing Summary
+
+Static routes are intentionally used for IPv6 in this lab for practice instead of OSPFv3.
+
+| Device | Destination Prefixes | Exit Interface | Next Hop | Purpose |
+|---|---|---|---|---|
+| `EDGE` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/0` | `2001:DB8:113:1::1` | Reach internal VLANs through `CR1` |
+| `EDGE` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/1` | `2001:DB8:113:2::1` | Reach internal VLANs through `CR2` |
+| `EDGE` | `::/0` | `g0/2` | `2001:DB8:113:3::1` | Forward upstream toward `INTERNET` |
+| `DSW1-MAIN` | `::/0` | `g1/0/4` | `2001:DB8:0:0::1` | Primary upstream path through `CR1` |
+| `DSW1-MAIN` | `::/0` | `g1/0/7` | `2001:DB8:0:3::1` | Secondary upstream path through `CR2` |
+| `DSW2-BACKUP` | `::/0` | `g1/0/4` | `2001:DB8:0:2::1` | Primary upstream path through `CR2` |
+| `DSW2-BACKUP` | `::/0` | `g1/0/7` | `2001:DB8:0:1::1` | Secondary upstream path through `CR1` |
+| `CR1` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/0` | `2001:DB8:0:0::2` | Reach VLANs through `DSW1-MAIN` |
+| `CR1` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/2` | `2001:DB8:0:1::2` | Reach VLANs through `DSW2-BACKUP` |
+| `CR2` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/0` | `2001:DB8:0:2::2` | Reach VLANs through `DSW2-BACKUP` |
+| `CR2` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `g0/2` | `2001:DB8:0:3::2` | Reach VLANs through `DSW1-MAIN` |
+| `INTERNET` | `2001:DB8:10::/64`, `20::/64`, `30::/64`, `40::/64` | `GigabitEthernet0/0` | `2001:DB8:113:3::2` | Return internal VLAN traffic toward `EDGE` |
 
 ## VTP Documentation
 
@@ -385,7 +404,8 @@ This section documents the OSPF design used for dynamic routing and failover beh
 - OSPF is configured in a single area only: `area 0`.
 - On the multilayer switches, VLAN SVIs are advertised through `network` statements with wildcard masks under the OSPF process.
 - Physical routed interfaces are enabled individually under the interface with `ip ospf 1 area 0`.
-- OSPF is used to advertise internal routed paths and upstream connectivity across the lab.
+- OSPF is used to advertise IPv4 internal routed paths and upstream connectivity across the lab.
+- IPv6 reachability is intentionally built with static routes for practice instead of OSPFv3.
 - This topology implements OSPF Equal-Cost Multi-Path (ECMP) between the dual-homed distribution switches and core routers.
 - `EDGE` originates the default route into OSPF so the internal routers learn outside reachability.
 - The topology is designed so path preference and failover can be observed when the primary route changes or becomes unavailable.
@@ -463,7 +483,7 @@ show ip protocols
 
 ### Verification Screenshots
 
-The screenshot below shows `DSW1-MAIN` verifying a healthy and stable OSPF link-state database. The full topology is present, the shared segments are being advertised through the expected network LSAs, the external default route from `EDGE` is present, and there are no signs of database instability in the output.
+The screenshot below shows `DSW1-MAIN` verifying a healthy and stable OSPF link-state database. The full topology is present, the expected IPv4 routes and LSAs are visible, the external default route from `EDGE` is present, and there are no signs of database instability in the output.
 
 ![DSW1-MAIN show ip ospf database output showing a healthy area 0 link-state database and the external default route learned from EDGE](screenshots/ospf-database.png)
 
@@ -1163,6 +1183,7 @@ show running-config interface <interface>
 - I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read. I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
 - In Packet Tracer, **IPv4 uses HSRP virtual gateways**, while **IPv6 uses the `DSW1-MAIN` and `DSW2-BACKUP` SVI addresses** because an IPv6 virtual gateway is not used in this lab.
+- **IPv6 routing is intentionally static** in this topology for practice, while **IPv4 dynamic routing uses OSPF**.
 - Redundancy features such as **HSRP, EtherChannel, and STP protections** are included to reflect real design patterns.
 - Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the data and voice VLANs, and the admin server providing DNS, NTP, and syslog reception.
 - SSH management access is intentionally restricted to **VLAN 30 / IT** by applying a standard ACL to the VTY lines.
@@ -1272,6 +1293,7 @@ Network address: 203.0.113.0/30
 Prefix: /30
 Usable range: 203.0.113.1 - 203.0.113.2
 Broadcast address: 203.0.113.3
+IPv6 pair: 2001:DB8:113:1::1 <-> 2001:DB8:113:1::2
 
 CR2-EDGE P2P
 Host bits: 2^2 = 4
@@ -1280,6 +1302,7 @@ Network address: 203.0.113.4/30
 Prefix: /30
 Usable range: 203.0.113.5 - 203.0.113.6
 Broadcast address: 203.0.113.7
+IPv6 pair: 2001:DB8:113:2::1 <-> 2001:DB8:113:2::2
 
 EDGE-INTERNET
 Host bits: 2^2 = 4
@@ -1289,6 +1312,7 @@ Prefix: /30
 Usable range: 203.0.113.9 - 203.0.113.10
 Broadcast: 203.0.113.11
 Next network: 203.0.113.12
+IPv6 pair: 2001:DB8:113:3::1 <-> 2001:DB8:113:3::2
 ```
 
 ## Next Steps
