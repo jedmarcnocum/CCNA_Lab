@@ -591,8 +591,9 @@ interface vlan 20
 
 ### Intended Behavior
 
-- Hosts in `VLAN 10` can obtain DHCP, resolve `file.services.local` through `192.168.40.2`, and establish FTP sessions with `192.168.40.1` using `hr` / `hr`.
-- Hosts in `VLAN 20` can obtain DHCP, resolve `web.services.local` through `192.168.40.2`, and reach `192.168.40.3` over HTTPS.
+- Hosts in `VLAN 10` can obtain DHCP, resolve `file.services.local` via the admin/DNS server at `192.168.40.2`, and access the FTP service on `192.168.40.1` using `hr` / `hr`.
+- Hosts in `VLAN 20` can obtain DHCP, resolve `web.services.local` via the admin/DNS server at `192.168.40.2`, and access the web server at `192.168.40.3` over HTTPS.
+- Hosts in `VLAN 20` cannot browse to `web.services.local` over HTTP because the Sales ACL only permits TCP `443` to the web server.
 - Return traffic for those approved flows is permitted by the outbound ACLs on `VLAN 10` and `VLAN 20`.
 - Other traffic, such as an HR client trying to `ping file.services.local`, is denied after DHCP, DNS, and FTP are matched.
 
@@ -610,15 +611,15 @@ The screenshots below show the expected `VLAN 10` behavior from `PC1`: DHCP succ
 
 ### PC2 Web Tests
 
-The screenshots below show the `VLAN 20` browser tests from `PC2` against `web.services.local`.
+The screenshots below show the expected `VLAN 20` browser behavior from `PC2`: HTTP is denied, while HTTPS is allowed against `web.services.local`.
 
 #### PC2 HTTP Test
 
-![PC2 HTTP test against web.services.local](screenshots/pc2-http-test.png)
+![PC2 HTTP test against web.services.local showing a timeout because HTTP is denied by the Sales ACL](screenshots/pc2-http-test.png)
 
 #### PC2 HTTPS Test
 
-![PC2 HTTPS test against web.services.local](screenshots/pc2-https-test.png)
+![PC2 HTTPS test against web.services.local showing successful access because HTTPS is permitted by the Sales ACL](screenshots/pc2-https-test.png)
 
 ### Verification Commands
 
