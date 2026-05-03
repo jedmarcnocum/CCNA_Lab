@@ -232,6 +232,14 @@ The screenshots below show the HSRP state aligned with the spanning-tree load-ba
 
 ![DSW2-BACKUP standby brief output showing VLANs 20 and 40 active while VLANs 10, 30, and 100 remain standby](screenshots/fhrp-ds-backup.png)
 
+### Distribution-to-Distribution Routed Link
+
+The port-channel between `DSW1-MAIN` and `DSW2-BACKUP` is now configured as a Layer 3 routed interface (no switchport mode) with a `/30` point-to-point connection.
+
+| Link | IPv4 Subnet | DSW1-MAIN Address | DSW2-BACKUP Address | IPv6 Subnet | DSW1-MAIN IPv6 | DSW2-BACKUP IPv6 |
+|---|---|---|---|---|---|---|
+| `DSW1-MAIN` to `DSW2-BACKUP` | `10.12.12.0/30` | `10.12.12.1` | `10.12.12.2` | `2001:DB8:0:12::/64` | `2001:DB8:0:12::1` | `2001:DB8:0:12::2` |
+
 ### Distribution-to-Core Routed Uplinks
 
 
@@ -248,7 +256,32 @@ The screenshots below show the HSRP state aligned with the spanning-tree load-ba
 |---|---|---|---|---|---|---|
 | CR1 to EDGE | `203.0.113.0/30` | `203.0.113.1` | `203.0.113.2` | `2001:DB8:113:1::/64` | `2001:DB8:113:1::1` | `2001:DB8:113:1::2` |
 | CR2 to EDGE | `203.0.113.4/30` | `203.0.113.5` | `203.0.113.6` | `2001:DB8:113:2::/64` | `2001:DB8:113:2::1` | `2001:DB8:113:2::2` |
-| EDGE to Internet | `203.0.113.8/30` | `203.0.113.9` | `203.0.113.10` | Not used | Not used | Not used |
+| EDGE to Internet | `203.0.113.8/30` | `203.0.113.9` | `203.0.113.10` | `2001:DB8:113:3::/64` | `2001:DB8:113:3::1` | `2001:DB8:113:3::2` |
+
+### IPv6 Static Routing Summary
+
+Static routes are intentionally used for IPv6 in this lab for practice instead of OSPFv3.
+
+On the core routers, the internal IPv6 static routes are aligned with the HSRP active gateway split. The preferred path follows the distribution switch that is active for that VLAN.
+
+| Device | Destination Prefixes | Exit Interface | Next Hop | Purpose |
+|---|---|---|---|---|
+| `INTERNET` | `2001:DB8:10::/64`, `20::/64`, `30::/64` | `g0/0` | `2001:DB8:113:3::2` | Return internal VLAN traffic toward `EDGE` |
+| `EDGE` | `2001:DB8:10::/64`, `20::/64`, `30::/64` | `g0/0` | `2001:DB8:113:1::1` | Reach internal VLANs through `CR1` |
+| `EDGE` | `2001:DB8:10::/64`, `20::/64`, `30::/64` | `g0/1` | `2001:DB8:113:2::1` | Reach internal VLANs through `CR2` |
+| `EDGE` | `::/0` | `g0/2` | `2001:DB8:113:3::1` | Forward upstream toward `INTERNET` |
+| `CR1` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/0` | `2001:DB8:0:0::2` | Primary path through `DSW1-MAIN` for VLANs active on `DSW1-MAIN` |
+| `CR1` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/2` | `2001:DB8:0:1::2` | Floating backup path through `DSW2-BACKUP` with administrative distance `10` |
+| `CR1` | `2001:DB8:20::/64` | `g0/2` | `2001:DB8:0:1::2` | Primary path through `DSW2-BACKUP` for VLANs active on `DSW2-BACKUP` |
+| `CR1` | `2001:DB8:20::/64` | `g0/0` | `2001:DB8:0:0::2` | Floating backup path through `DSW1-MAIN` with administrative distance `10` |
+| `CR2` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/2` | `2001:DB8:0:3::2` | Primary path through `DSW1-MAIN` for VLANs active on `DSW1-MAIN` |
+| `CR2` | `2001:DB8:10::/64`, `2001:DB8:30::/64` | `g0/0` | `2001:DB8:0:2::2` | Floating backup path through `DSW2-BACKUP` with administrative distance `10` |
+| `CR2` | `2001:DB8:20::/64` | `g0/0` | `2001:DB8:0:2::2` | Primary path through `DSW2-BACKUP` for VLANs active on `DSW2-BACKUP` |
+| `CR2` | `2001:DB8:20::/64` | `g0/2` | `2001:DB8:0:3::2` | Floating backup path through `DSW1-MAIN` with administrative distance `10` |
+| `DSW1-MAIN` | `::/0` | `g1/0/4` | `2001:DB8:0:0::1` | Primary upstream path through `CR1` |
+| `DSW1-MAIN` | `::/0` | `g1/0/7` | `2001:DB8:0:3::1` | Secondary upstream path through `CR2` |
+| `DSW2-BACKUP` | `::/0` | `g1/0/4` | `2001:DB8:0:2::1` | Primary upstream path through `CR2` |
+| `DSW2-BACKUP` | `::/0` | `g1/0/7` | `2001:DB8:0:1::1` | Secondary upstream path through `CR1` |
 
 ## VTP Documentation
 
@@ -340,28 +373,28 @@ This section documents the EtherChannel link configured between `DSW1-MAIN` and 
 
 ### Design Summary
 
-- The direct inter-switch uplinks between `DSW1-MAIN` and `DSW2-BACKUP` are bundled into a single EtherChannel for redundancy and additional bandwidth.
-- This keeps the distribution layer resilient because the logical port-channel remains available if one member link fails.
-- The bundled inter-switch link also simplifies spanning-tree operation by presenting the parallel links as one logical path.
+- The Layer 3 Port-Channel between distribution switches provides a routed interconnect for deterministic traffic flow, inter-VLAN reachability, and resiliency. It also forms an OSPF adjacency for IPv4, enabling dynamic routing and fast convergence while eliminating Layer 2 dependencies like STP and preventing suboptimal forwarding.
+  
 
-### Intended Behavior
+### IPv4 and IPv6 Addressing
 
-- Traffic between the two multilayer switches can continue flowing even if a single physical member link goes down.
-- The switches treat the port-channel as one logical connection instead of separate parallel trunks.
-- The EtherChannel provides both redundancy and higher aggregate throughput across the distribution pair.
-- The bundle is formed with **LACP**, so both ends negotiate the port-channel rather than relying on a static `on` configuration.
+| Device | IPv4 Address | IPv6 Address |
+|---|---|---|
+| `DSW1-MAIN` | `10.12.12.1/30` | `2001:DB8:0:12::1/64` |
+| `DSW2-BACKUP` | `10.12.12.2/30` | `2001:DB8:0:12::2/64` |
 
 ### Verification Commands
 
 ```cisco
 show etherchannel summary
-show interfaces trunk
-show spanning-tree
+show interfaces port-channel
+show ip interface port-channel
+show ipv6 interface port-channel
 ```
 
 ### Verification Screenshot
 
-The screenshot below shows the LACP EtherChannel up between `DSW1-MAIN` and `DSW2-BACKUP`, with `Port-channel1` in use and both member links bundled successfully.
+The screenshot below shows the LACP EtherChannel up between `DSW1-MAIN` and `DSW2-BACKUP`, with `Port-channel1` in use as a routed interface and both member links bundled successfully.
 
 ![EtherChannel summary showing Port-channel1 using LACP with both uplinks bundled between DSW1-MAIN and DSW2-BACKUP](screenshots/etherchannel-lacp-ds-main-backup.png)
 
@@ -385,7 +418,8 @@ This section documents the OSPF design used for dynamic routing and failover beh
 - OSPF is configured in a single area only: `area 0`.
 - On the multilayer switches, VLAN SVIs are advertised through `network` statements with wildcard masks under the OSPF process.
 - Physical routed interfaces are enabled individually under the interface with `ip ospf 1 area 0`.
-- OSPF is used to advertise internal routed paths and upstream connectivity across the lab.
+- OSPF is used to advertise IPv4 internal routed paths and upstream connectivity across the lab.
+- IPv6 reachability is intentionally built with static routes for practice instead of OSPFv3.
 - This topology implements OSPF Equal-Cost Multi-Path (ECMP) between the dual-homed distribution switches and core routers.
 - `EDGE` originates the default route into OSPF so the internal routers learn outside reachability.
 - The topology is designed so path preference and failover can be observed when the primary route changes or becomes unavailable.
@@ -463,7 +497,7 @@ show ip protocols
 
 ### Verification Screenshots
 
-The screenshot below shows `DSW1-MAIN` verifying a healthy and stable OSPF link-state database. The full topology is present, the shared segments are being advertised through the expected network LSAs, the external default route from `EDGE` is present, and there are no signs of database instability in the output.
+The screenshot below shows `DSW1-MAIN` verifying a healthy and stable OSPF link-state database. The full topology is present, the expected IPv4 routes and LSAs are visible, the external default route from `EDGE` is present, and there are no signs of database instability in the output.
 
 ![DSW1-MAIN show ip ospf database output showing a healthy area 0 link-state database and the external default route learned from EDGE](screenshots/ospf-database.png)
 
@@ -591,8 +625,9 @@ interface vlan 20
 
 ### Intended Behavior
 
-- Hosts in `VLAN 10` can obtain DHCP, resolve `file.services.local` through `192.168.40.2`, and establish FTP sessions with `192.168.40.1` using `hr` / `hr`.
-- Hosts in `VLAN 20` can obtain DHCP, resolve `web.services.local` through `192.168.40.2`, and reach `192.168.40.3` over HTTPS.
+- Hosts in `VLAN 10` can obtain DHCP, resolve `file.services.local` via the admin/DNS server at `192.168.40.2`, and access the FTP service on `192.168.40.1` using `hr` / `hr`.
+- Hosts in `VLAN 20` can obtain DHCP, resolve `web.services.local` via the admin/DNS server at `192.168.40.2`, and access the web server at `192.168.40.3` over HTTPS.
+- Hosts in `VLAN 20` cannot browse to `web.services.local` over HTTP because the Sales ACL only permits TCP `443` to the web server.
 - Return traffic for those approved flows is permitted by the outbound ACLs on `VLAN 10` and `VLAN 20`.
 - Other traffic, such as an HR client trying to `ping file.services.local`, is denied after DHCP, DNS, and FTP are matched.
 
@@ -610,15 +645,15 @@ The screenshots below show the expected `VLAN 10` behavior from `PC1`: DHCP succ
 
 ### PC2 Web Tests
 
-The screenshots below show the `VLAN 20` browser tests from `PC2` against `web.services.local`.
+The screenshots below show the expected `VLAN 20` browser behavior from `PC2`: HTTP is denied, while HTTPS is allowed against `web.services.local`.
 
 #### PC2 HTTP Test
 
-![PC2 HTTP test against web.services.local](screenshots/pc2-http-test.png)
+![PC2 HTTP test against web.services.local showing a timeout because HTTP is denied by the Sales ACL](screenshots/pc2-http-test.png)
 
 #### PC2 HTTPS Test
 
-![PC2 HTTPS test against web.services.local](screenshots/pc2-https-test.png)
+![PC2 HTTPS test against web.services.local showing successful access because HTTPS is permitted by the Sales ACL](screenshots/pc2-https-test.png)
 
 ### Verification Commands
 
@@ -1162,6 +1197,7 @@ show running-config interface <interface>
 - I use **VLSM planning and consistent gateway conventions** to keep addressing easy to read. I document subnetting in a step-by-step format before assigning addresses. This strengthens my **subnetting skills** by forcing me to calculate host requirements, masks, usable ranges, broadcasts, and the next available network instead of guessing.
 - I include both **IPv4 and IPv6** to strengthen dual-stack configuration and troubleshooting skills.
 - In Packet Tracer, **IPv4 uses HSRP virtual gateways**, while **IPv6 uses the `DSW1-MAIN` and `DSW2-BACKUP` SVI addresses** because an IPv6 virtual gateway is not used in this lab.
+- **IPv6 routing is intentionally static** in this topology for practice, while **IPv4 dynamic routing uses OSPF**.
 - Redundancy features such as **HSRP, EtherChannel, and STP protections** are included to reflect real design patterns.
 - Core shared services are centralized in **VLAN 40**, with static server IPs, DHCP scopes for the data and voice VLANs, and the admin server providing DNS, NTP, and syslog reception.
 - SSH management access is intentionally restricted to **VLAN 30 / IT** by applying a standard ACL to the VTY lines.
@@ -1271,6 +1307,7 @@ Network address: 203.0.113.0/30
 Prefix: /30
 Usable range: 203.0.113.1 - 203.0.113.2
 Broadcast address: 203.0.113.3
+IPv6 pair: 2001:DB8:113:1::1 <-> 2001:DB8:113:1::2
 
 CR2-EDGE P2P
 Host bits: 2^2 = 4
@@ -1279,6 +1316,7 @@ Network address: 203.0.113.4/30
 Prefix: /30
 Usable range: 203.0.113.5 - 203.0.113.6
 Broadcast address: 203.0.113.7
+IPv6 pair: 2001:DB8:113:2::1 <-> 2001:DB8:113:2::2
 
 EDGE-INTERNET
 Host bits: 2^2 = 4
@@ -1288,6 +1326,7 @@ Prefix: /30
 Usable range: 203.0.113.9 - 203.0.113.10
 Broadcast: 203.0.113.11
 Next network: 203.0.113.12
+IPv6 pair: 2001:DB8:113:3::1 <-> 2001:DB8:113:3::2
 ```
 
 ## Next Steps
