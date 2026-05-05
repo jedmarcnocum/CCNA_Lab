@@ -1,3 +1,11 @@
+## Block Guests ##
+ip access-list extended GUEST_BLOCK
+ deny ip 192.168.50.0 0.0.0.255 192.168.0.0 0.0.255.255
+ permit ip any any
+
+interface vlan 50
+ ip access-group GUEST_BLOCK in
+
 ## SSH Server ##
 Standard IP access list SSH_IN
     10 permit 192.168.30.0 0.0.0.255

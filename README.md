@@ -23,6 +23,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [SNMP and Syslog Documentation](#snmp-and-syslog-documentation)
 - [SSH Documentation](#ssh-documentation)
 - [VoIP Documentation](#voip-documentation)
+- [Wireless LAN Documentation](#wireless-lan-documentation)
 - [QoS Documentation](#qos-documentation)
 - [Port Security Documentation](#port-security-documentation)
 - [DHCP Snooping and DAI Documentation](#dhcp-snooping-and-dai-documentation)
@@ -51,7 +52,8 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - Extended ACL policy enforcement for service-based access control
 - Centralized DNS and DHCP services for user and voice VLANs
 - Centralized NTP for consistent device timestamps across routers and switches
-- Basic SNMP and syslog monitoring validation in Packet Tracer
+- Wireless LAN integration with a Cisco WLC, APs, and guest wireless VLAN
+- Basic SNMP and syslog monitoring validation
 - Restricted SSH management access from the IT VLAN
 - VoIP phone access ports with a separate voice VLAN
 - QoS classification, DSCP EF marking, trust boundaries, and strict priority queueing for voice traffic
@@ -60,17 +62,17 @@ Instead of treating each topic as a completely separate project, I use an **evol
 
 ## Lab Files
 
-These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the repository is `labs/Core Routers Redundancy.pkt`.
+These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the repository is `labs/Wireless LAN.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
 | `labs/VTP.pkt` | VLAN propagation and switch domain setup |
 | `labs/VLAN (ROAS).pkt` | Router-on-a-stick and inter-VLAN routing |
 | `labs/VLAN (P2P).pkt` | Layer 3 switching with SVIs and routed links |
-| `labs/RSTP.pkt` | Spanning-tree protection features |
+| `labs/RSTP.pkt` | Spanning-tree with protection features |
 | `labs/Etherchannel.pkt` | Aggregated uplinks and redundancy |
 | `labs/HSRP.pkt` | HSRP active/standby IPv4 default gateway redundancy |
-| `labs/OSPF.pkt` | Dynamic routing and path preference |
+| `labs/OSPF.pkt` | Dynamic routing with OSPF |
 | `labs/Core Routers Redundancy.pkt` | Routed failover and OSPF ECMP testing between `CR1`, `CR2`, and the distribution layer |
 | `labs/IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `labs/Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
@@ -82,12 +84,13 @@ These Packet Tracer labs are stored in `labs/` and show the progression of the t
 | `labs/Port Security.pkt` | Access-layer security lab with sticky learning, manual secure MACs, and restrict-mode violations |
 | `labs/DHCP Snooping.pkt` | Layer 2 security lab with DHCP snooping, rogue DHCP blocking, and rate-limit testing |
 | `labs/ARP Inspection.pkt` | Latest Layer 2 security lab with Dynamic ARP Inspection added on top of DHCP snooping validation |
+| `labs/Wireless LAN.pkt` | Wireless LAN controller, APs, and Guest wireless VLAN |
 
 ## Topology Snapshot
 
 The current lab design includes:
 
-- Five VLANs: HR, Sales, IT, Services, and Voice
+- Seven VLANs: HR, Sales, IT, Services, Guest Wireless, Voice, and WLC Management
 - Two distribution / multilayer switches acting as primary and backup gateways
 - An EtherChannel bundle between `DSW1-MAIN` and `DSW2-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
@@ -96,6 +99,8 @@ The current lab design includes:
 - Dynamic NAT overload (PAT) on `EDGE` for inside local addresses reaching outside networks
 - Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
 - DHCP scope delivery for data VLANs `10`, `20`, and `30`, plus the voice VLAN `100`
+- Guest wireless in `VLAN 50` with **WLC-managed DHCP** and wireless client testing
+- A dedicated WLC management VLAN `99` for controller management, CAPWAP, and DHCP proxy behavior
 - Cisco IP phones added at the access layer with a dedicated `VLAN 100` voice segment
 - QoS policy testing with DSCP marking at `ASW1`, DSCP trust at `DSW1-MAIN` and `DSW2-BACKUP`, and egress priority queueing on routed devices such as `CR1`, `CR2`, and `EDGE`
 - Port security on access ports, using sticky learning on `ASW1` and `ASW2` plus manually configured secure MAC addresses on `ASW3`
@@ -114,6 +119,8 @@ The current lab design includes:
 | 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::252` (`DSW1-MAIN`), `2001:DB8:20::253` (`DSW2-BACKUP`) |
 | 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::252` (`DSW1-MAIN`), `2001:DB8:30::253` (`DSW2-BACKUP`) |
 | 40 | Services | `192.168.40.0/24` | `192.168.40.254` | `2001:DB8:40::/64` | `2001:DB8:40::252` (`DSW1-MAIN`), `2001:DB8:40::253` (`DSW2-BACKUP`) |
+| 50 | Guests Wireless | `192.168.50.0/24` | `192.168.50.254` | Not configured in this lab | Not configured in this lab |
+| 99 | WLC Management | `192.168.99.0/24` | `192.168.99.254` | Not configured in this lab | Not configured in this lab |
 | 100 | Voice | `192.168.100.0/24` | `192.168.100.254` | Not configured in this lab | Not configured in this lab |
 
 ### Example End-Host Addressing
@@ -124,6 +131,7 @@ The current lab design includes:
 | 20 | `192.168.20.1` | `2001:DB8:20::1` |
 | 30 | `192.168.30.1` | `2001:DB8:30::1` |
 | 40 | `192.168.40.1` | `2001:DB8:40::1` |
+| 50 | `192.168.50.1` | Not used |
 | 100 | `192.168.100.1` | Not used |
 
 ### Services VLAN Infrastructure
@@ -133,7 +141,7 @@ The current lab design includes:
 | File Server | `file.services.local` | `192.168.40.1` | FTP service for `VLAN 10` testing with account `hr` / `hr` |
 | Admin Server | `admin.services.local` | `192.168.40.2` | DNS, NTP, and syslog receiver for the lab |
 | Web Server | `web.services.local` | `192.168.40.3` | HTTPS service for `VLAN 20` testing |
-| DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10`, `20`, `30`, and `100` |
+| DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10`, `20`, `30`, `99`, and `100` |
 
 
 ## HSRP Documentation
@@ -152,14 +160,14 @@ The HSRP active gateway placement is aligned with the spanning-tree root placeme
 | Backup multilayer switch SVI | `192.168.x.253` | `2001:DB8:x::253` |
 | Virtual default gateway | `192.168.x.254` | Not used in this Packet Tracer IPv6 lab |
 
-Replace `x` with the VLAN number such as `10`, `20`, `30`, `40`, or `100`.
+Replace `x` with the VLAN number such as `10`, `20`, `30`, `40`, `50`, `99`, or `100`.
 
 ### HSRP Active / Standby VLAN Split
 
 | VLAN Group | Active HSRP Device | Standby HSRP Device |
 |---|---|---|
-| `10`, `30`, `100` | `DSW1-MAIN` | `DSW2-BACKUP` |
-| `20`, `40` | `DSW2-BACKUP` | `DSW1-MAIN` |
+| `10`, `30`, `99`, `100` | `DSW1-MAIN` | `DSW2-BACKUP` |
+| `20`, `40`, `50` | `DSW2-BACKUP` | `DSW1-MAIN` |
 
 ### Example Configuration
 
@@ -181,6 +189,14 @@ interface vlan 30
 !
 interface vlan 40
  standby 40 ip 192.168.40.254
+!
+interface vlan 50
+ standby 50 ip 192.168.50.254
+!
+interface vlan 99
+ standby 99 ip 192.168.99.254
+ standby 99 priority 110
+ standby 99 preempt
 !
 interface vlan 100
  standby 100 ip 192.168.100.254
@@ -207,6 +223,14 @@ interface vlan 40
  standby 40 priority 110
  standby 40 preempt
 !
+interface vlan 50
+ standby 50 ip 192.168.50.254
+ standby 50 priority 110
+ standby 50 preempt
+!
+interface vlan 99
+ standby 99 ip 192.168.99.254
+!
 interface vlan 100
  standby 100 ip 192.168.100.254
 ```
@@ -222,15 +246,23 @@ show running-config | section interface Vlan
 
 ### Verification Screenshots
 
-The screenshots below show the HSRP state aligned with the spanning-tree load-balancing design: `DSW1-MAIN` is active for `VLANs 10, 30, and 100`, while `DSW2-BACKUP` is active for `VLANs 20 and 40`.
+The screenshots below show the HSRP state aligned with the spanning-tree load-balancing design: `DSW1-MAIN` is active for `VLANs 10, 30, 99, and 100`, while `DSW2-BACKUP` is active for `VLANs 20, 40, and 50`.
 
 #### DSW1-MAIN HSRP State
 
-![DSW1-MAIN standby brief output showing VLANs 10, 30, and 100 active while VLANs 20 and 40 remain standby](screenshots/fhrp-ds-main.png)
+![DSW1-MAIN standby brief output showing VLANs 10, 30, 99, and 100 active while VLANs 20, 40, and 50 remain standby](screenshots/fhrp-ds-main.png)
+
+#### DSW1-MAIN STP Root Alignment
+
+![DSW1-MAIN spanning-tree root status showing VLANs 10, 30, 99, and 100 preferred, aligned with HSRP active gateway roles](screenshots/hsrp-stp-aligned-dsmain.png)
 
 #### DSW2-BACKUP HSRP State
 
-![DSW2-BACKUP standby brief output showing VLANs 20 and 40 active while VLANs 10, 30, and 100 remain standby](screenshots/fhrp-ds-backup.png)
+![DSW2-BACKUP standby brief output showing VLANs 20, 40, and 50 active while VLANs 10, 30, 99, and 100 remain standby](screenshots/fhrp-ds-backup.png)
+
+#### DSW2-BACKUP STP Root Alignment
+
+![DSW2-BACKUP spanning-tree root status showing VLANs 20, 40, and 50 preferred, aligned with HSRP active gateway roles](screenshots/hsrp-stp-aligned-dsbackup.png)
 
 ### Distribution-to-Distribution Routed Link
 
@@ -423,6 +455,7 @@ This section documents the OSPF design used for dynamic routing and failover beh
 - This topology implements OSPF Equal-Cost Multi-Path (ECMP) between the dual-homed distribution switches and core routers.
 - `EDGE` originates the default route into OSPF so the internal routers learn outside reachability.
 - The topology is designed so path preference and failover can be observed when the primary route changes or becomes unavailable.
+- VLAN 99 (WLC Management) is included in OSPF as a workaround for Packet Tracer wireless behavior where devices on other VLANs may appear with management subnet IPs, enabling them to connect to the internet.
 
 ### Example Loopback and Router ID Configuration
 
@@ -439,6 +472,8 @@ router ospf 1
  network 192.168.20.0 0.0.0.255 area 0
  network 192.168.30.0 0.0.0.255 area 0
  network 192.168.40.0 0.0.0.255 area 0
+ network 192.168.50.0 0.0.0.255 area 0
+ network 192.168.99.0 0.0.0.255 area 0
 ```
 
 #### DSW2-BACKUP
@@ -454,6 +489,8 @@ router ospf 1
  network 192.168.20.0 0.0.0.255 area 0
  network 192.168.30.0 0.0.0.255 area 0
  network 192.168.40.0 0.0.0.255 area 0
+ network 192.168.50.0 0.0.0.255 area 0
+ network 192.168.99.0 0.0.0.255 area 0
 ```
 
 #### CR1
@@ -799,11 +836,10 @@ This section documents the SSH access restriction used for device management in 
 
 ### SSH Summary
 
-- SSH access to the network devices is limited to the IT subnet `192.168.30.0/24`.
+- SSH access to the management VLAN is limited to the IT subnet `192.168.30.0/24`.
 - A standard ACL named `SSH_IN` is applied inbound on the VTY lines to restrict which hosts can open SSH sessions.
 - For demo and testing, only `DSW1-MAIN` and `DSW2-BACKUP` are SSH-enabled devices.
 - The local SSH test credentials are username `it` and password `ccna`.
-- This keeps management access separated from the HR and Sales user VLANs.
 
 ### SSH Access ACL
 
@@ -830,17 +866,18 @@ line vty 5 15
 
 ### Demo and Testing Commands
 
-Use either SSH format below from a host in the IT VLAN:
+Use the SSH commands below from a host in the IT VLAN (192.168.30.0/24).  
+Management access is performed via the management VLAN (VLAN 99), where the distribution switches are reachable.
 
 ```text
-ssh -l it 192.168.30.252
-ssh -l it 192.168.30.253
-ssh it@192.168.30.252
-ssh it@192.168.30.253
+ssh -l it 192.168.99.252
+ssh -l it 192.168.99.253
+ssh it@192.168.99.252
+ssh it@192.168.99.253
 ```
 
-- `192.168.30.252` = `DSW1-MAIN`
-- `192.168.30.253` = `DSW2-BACKUP`
+- `192.168.99.252` = `DSW1-MAIN`
+- `192.168.99.253` = `DSW2-BACKUP`
 
 ### Verification Commands
 
@@ -929,6 +966,132 @@ show interfaces switchport
 show ephone registered
 show telephony-service ephone
 ```
+
+## Wireless LAN Documentation
+
+This section documents the wireless LAN (WLAN) integration using a Cisco Wireless LAN Controller (WLC) and lightweight access points.
+
+### Design Summary
+
+- A Cisco WLC (`WLC1`) is connected to `DSW1-MAIN` via an 802.1Q trunk.
+- Lightweight APs register to the WLC using CAPWAP.
+- WLANs are mapped to VLANs through WLC dynamic interfaces.
+- Guest wireless is carried in `VLAN 50` while the WLC management plane uses `VLAN 99`.
+- Due to Packet Tracer limitations, wireless client behavior differs from real hardware and requires specific workarounds.
+
+## Wireless VLANs
+
+| VLAN | Purpose         | IPv4 Subnet     | Gateway        |
+|------|----------------|-----------------|----------------|
+| 50   | Guests Wireless | 192.168.50.0/24 | 192.168.50.254 |
+| 99   | WLC Management | 192.168.99.0/24 | 192.168.99.254 |
+
+## WLC Interface Configuration
+
+### Management Interface
+
+| Setting    | Value                                              |
+|------------|----------------------------------------------------|
+| VLAN       | 99                                                 |
+| IP Address | 192.168.99.1                                       |
+| Purpose    | WLC management, CAPWAP, and DHCP (guest workaround)|
+
+### WLC Dynamic Interfaces
+![WLC dynamic interfaces showing VLAN mapping for guest and management dynamic interfaces](screenshots/wlc-dynamic-interfaces.png)
+
+### WLC WLANs
+![WLC WLAN configuration showing guest SSID mapping and assigned VLANs](screenshots/wlc-wlans.png)
+
+### LWAPs
+![Lightweight AP registration page showing APs successfully joined to WLC1](screenshots/wlc-aps.png)
+
+### Wireless Client Verification
+![Guest wireless DHCP pool and Packet Tracer workaround screenshot showing WLC DHCP assignment for VLAN 50 while management traffic appears on VLAN 99](screenshots/vlan50-guests-dhcp-pool-wlc-workaround-for-pt-bug-devices_are_using_mgmt_99_network_as_ip.png)
+
+![Smartphone wireless connectivity test showing a client successfully associating through the wireless LAN controller](screenshots/smartphone-1-test-wificonnect-vlan10.png)
+
+## Design Notes
+
+- VLAN 99 is used as the native VLAN to support WLC management traffic.
+- Packet Tracer WLC sends management traffic untagged, so the native VLAN must match VLAN 99.
+## DHCP Design (Wireless)
+
+### Guest WLAN (VLAN 50)
+
+- DHCP is provided by the WLC instead of the centralized DHCP server.
+- DHCP server is set to `192.168.99.1` (WLC management IP).
+- This ensures wireless clients receive correct addressing in the `192.168.50.0/24` subnet.
+
+
+### Other WLANs
+
+- Continue using centralized DHCP (`192.168.40.4`)
+- Still affected by Packet Tracer wireless limitations
+
+
+## Packet Tracer Limitation and Workaround
+
+Packet Tracer has a known issue where wireless client traffic appears to originate from the WLC management VLAN instead of the assigned VLAN, similar to JITL's lab https://youtu.be/Il8ev78fcqw?t=923.
+
+
+### Observed Behavior
+
+Wireless clients appear as `192.168.99.x` instead of their assigned VLAN subnet.
+
+
+### Workaround Implemented
+
+- Guest WLAN uses WLC internal DHCP  
+- DHCP server is set to `192.168.99.1`  
+- This forces correct subnet assignment (`192.168.50.0/24`)  
+
+### Limitation Scope
+
+- Only WLANs using WLC DHCP behave correctly  
+- Other WLANs may still appear as VLAN 99 (`192.168.99.0/24`)  
+- Wireless devices may connect to random APs in the topology rather than the nearest or strongest signal — this is a Packet Tracer simulation behavior and does not reflect real-world RSSI-based AP selection.
+
+## ACL Design for Guest Wireless
+
+With the workaround:
+
+- Guest clients correctly use `192.168.50.0/24`  
+- Basic isolation ACLs can be applied on distribution switches normally on VLAN 50:
+  
+```cisco
+ip access-list extended GUEST_BLOCK
+ deny ip 192.168.50.0 0.0.0.255 192.168.0.0 0.0.255.255
+ permit ip any any
+
+interface vlan 50
+ ip access-group GUEST_BLOCK in
+```
+
+### Policy Intent
+
+- Deny access to internal VLANs (10,20,30,40)  
+- Allow internet access  
+
+## OSPF Requirement for Wireless
+
+```cisco
+router ospf 1
+ network 192.168.99.0 0.0.0.255 area 0
+```
+
+### Reason
+
+Due to Packet Tracer behavior, wireless traffic may still source from VLAN 99.  
+Without this route, return traffic follows the default route and loops toward the internet.
+
+## Key Takeaways
+
+- Packet Tracer WLC behavior differs from real hardware  
+- Native VLAN must match WLC management VLAN  
+- DHCP can be offloaded to WLC as a workaround  
+- OSPF must include all active VLANs (including management)  
+- Wireless ACL enforcement depends on correct IP assignment  
+
 
 ## QoS Documentation
 
@@ -1092,9 +1255,9 @@ This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection cont
 
 | Device | Protected VLAN(s) |
 |---|---|
-| `ASW1` | `10`, `30` |
-| `ASW2` | `20` |
-| `ASW3` | `40` |
+| `ASW1` | `10`, `20`, `30`, `50`, `100` |
+| `ASW2` | `10`, `20`, `30`, `50`, `100` |
+| `ASW3` | `10`, `20`, `30`, `50`, `100` |
 
 ### DHCP Snooping and DAI Configuration
 
@@ -1102,8 +1265,8 @@ This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection cont
 
 ```cisco
 ip dhcp snooping
-ip dhcp snooping vlan 10,30
-ip arp inspection vlan 10,30
+ip dhcp snooping vlan 10,20,30,50,100
+ip arp inspection vlan 10,20,30,50,100
 ip arp inspection validate src-mac dst-mac ip
 ```
 
@@ -1111,8 +1274,8 @@ ip arp inspection validate src-mac dst-mac ip
 
 ```cisco
 ip dhcp snooping
-ip dhcp snooping vlan 20
-ip arp inspection vlan 20
+ip dhcp snooping vlan 10,20,30,50,100
+ip arp inspection vlan 10,20,30,50,100
 ip arp inspection validate src-mac dst-mac ip
 ```
 
@@ -1120,8 +1283,8 @@ ip arp inspection validate src-mac dst-mac ip
 
 ```cisco
 ip dhcp snooping
-ip dhcp snooping vlan 40
-ip arp inspection vlan 40
+ip dhcp snooping vlan 10,20,30,50,100
+ip arp inspection vlan 10,20,30,50,100
 ip arp inspection validate src-mac dst-mac ip
 ```
 
@@ -1179,18 +1342,19 @@ show running-config interface <interface>
 8. Create SVIs for inter-VLAN routing.
 9. Verify VLAN reachability and gateway connectivity.
 10. Add the voice VLAN on phone-facing access ports and verify IP phone registration.
-11. Configure router interfaces and upstream connectivity.
-12. Deploy OSPF and validate adjacency plus route exchange.
-13. Add EtherChannel for redundancy and higher throughput.
-14. Configure HSRP for resilient IPv4 default gateway services.
-15. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
-16. Configure SSH management access restrictions.
-17. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
-18. Apply ACL policy controls and validate source-based filtering behavior.
-19. Apply QoS trust, classification, marking, and priority queueing for voice traffic.
-20. Apply port security on user-facing access ports and verify secure MAC learning or manual secure MAC bindings.
-21. Configure DHCP snooping and Dynamic ARP Inspection trust boundaries plus access-port rate limits.
-22. Test failover, path selection, name resolution, monitoring, VoIP behavior, access-layer security behavior, DHCP snooping behavior, DAI behavior, and end-to-end connectivity.
+11. Configure wireless LAN support, including guest VLAN 50, WLC management VLAN 99, and AP registration.
+12. Configure router interfaces and upstream connectivity.
+13. Deploy OSPF and validate adjacency plus route exchange.
+14. Add EtherChannel for redundancy and higher throughput.
+15. Configure HSRP for resilient IPv4 default gateway services.
+16. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
+17. Configure SSH management access restrictions.
+18. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
+19. Apply ACL policy controls and validate source-based filtering behavior.
+20. Apply QoS trust, classification, marking, and priority queueing for voice traffic.
+21. Apply port security on user-facing access ports and verify secure MAC learning or manual secure MAC bindings.
+22. Configure DHCP snooping and Dynamic ARP Inspection trust boundaries plus access-port rate limits.
+23. Test failover, path selection, name resolution, monitoring, VoIP behavior, access-layer security behavior, wireless LAN behavior, DHCP snooping behavior, DAI behavior, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -1248,6 +1412,24 @@ Prefix: /24
 Usable range: 192.168.40.1 - 192.168.40.254
 Broadcast address: 192.168.40.255
 Gateway: 192.168.40.254
+
+Guest VLAN 50
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.50.0/24
+Prefix: /24
+Usable range: 192.168.50.1 - 192.168.50.254
+Broadcast address: 192.168.50.255
+Gateway: 192.168.50.254
+
+WLC Management VLAN 99
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.99.0/24
+Prefix: /24
+Usable range: 192.168.99.1 - 192.168.99.254
+Broadcast address: 192.168.99.255
+Gateway: 192.168.99.254
 
 Voice VLAN 100
 Host bits: 2^8 = 256
@@ -1333,10 +1515,6 @@ IPv6 pair: 2001:DB8:113:3::1 <-> 2001:DB8:113:3::2
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
-- LAN and WAN architecture features such as GRE tunnels
-- Virtualization, cloud, containers, and VRF concepts
-- Wireless fundamentals, architecture, security, and configuration
-- Network automation topics such as JSON, XML, YAML, REST APIs, SDN, Ansible, Puppet, Chef, and Terraform
 - A future rebuild of the lab in EVE-NG or GNS3 overcoming Packet Tracer's limitations.
 
 ---
