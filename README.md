@@ -26,6 +26,7 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [QoS Documentation](#qos-documentation)
 - [Port Security Documentation](#port-security-documentation)
 - [DHCP Snooping and DAI Documentation](#dhcp-snooping-and-dai-documentation)
+- [Wireless LAN Documentation](#wireless-lan-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
