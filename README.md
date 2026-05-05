@@ -52,8 +52,8 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - Extended ACL policy enforcement for service-based access control
 - Centralized DNS and DHCP services for user and voice VLANs
 - Centralized NTP for consistent device timestamps across routers and switches
-- Wireless LAN integration with a Cisco WLC, guest VLAN, and Packet Tracer wireless workaround
-- Basic SNMP and syslog monitoring validation in Packet Tracer
+- Wireless LAN integration with a Cisco WLC, APs, and guest wireless VLAN
+- Basic SNMP and syslog monitoring validation
 - Restricted SSH management access from the IT VLAN
 - VoIP phone access ports with a separate voice VLAN
 - QoS classification, DSCP EF marking, trust boundaries, and strict priority queueing for voice traffic
@@ -69,10 +69,10 @@ These Packet Tracer labs are stored in `labs/` and show the progression of the t
 | `labs/VTP.pkt` | VLAN propagation and switch domain setup |
 | `labs/VLAN (ROAS).pkt` | Router-on-a-stick and inter-VLAN routing |
 | `labs/VLAN (P2P).pkt` | Layer 3 switching with SVIs and routed links |
-| `labs/RSTP.pkt` | Spanning-tree protection features |
+| `labs/RSTP.pkt` | Spanning-tree with protection features |
 | `labs/Etherchannel.pkt` | Aggregated uplinks and redundancy |
 | `labs/HSRP.pkt` | HSRP active/standby IPv4 default gateway redundancy |
-| `labs/OSPF.pkt` | Dynamic routing and path preference |
+| `labs/OSPF.pkt` | Dynamic routing with OSPF |
 | `labs/Core Routers Redundancy.pkt` | Routed failover and OSPF ECMP testing between `CR1`, `CR2`, and the distribution layer |
 | `labs/IPv6.pkt` | Dual-stack addressing with IPv6 static routes |
 | `labs/Extended ACL.pkt` | Per-VLAN extended ACLs for service-based access control |
@@ -141,7 +141,7 @@ The current lab design includes:
 | File Server | `file.services.local` | `192.168.40.1` | FTP service for `VLAN 10` testing with account `hr` / `hr` |
 | Admin Server | `admin.services.local` | `192.168.40.2` | DNS, NTP, and syslog receiver for the lab |
 | Web Server | `web.services.local` | `192.168.40.3` | HTTPS service for `VLAN 20` testing |
-| DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10`, `20`, `30`, and `100` |
+| DHCP Server | `dhcp.services.local` | `192.168.40.4` | DHCP pools for `VLAN 10`, `20`, `30`, `99`, and `100` |
 
 
 ## HSRP Documentation
@@ -455,6 +455,7 @@ This section documents the OSPF design used for dynamic routing and failover beh
 - This topology implements OSPF Equal-Cost Multi-Path (ECMP) between the dual-homed distribution switches and core routers.
 - `EDGE` originates the default route into OSPF so the internal routers learn outside reachability.
 - The topology is designed so path preference and failover can be observed when the primary route changes or becomes unavailable.
+- VLAN 99 (WLC Management) is included in OSPF as a workaround for Packet Tracer wireless behavior where devices on other VLANs may appear with management subnet IPs, enabling them to connect to the internet.
 
 ### Example Loopback and Router ID Configuration
 
@@ -471,6 +472,8 @@ router ospf 1
  network 192.168.20.0 0.0.0.255 area 0
  network 192.168.30.0 0.0.0.255 area 0
  network 192.168.40.0 0.0.0.255 area 0
+ network 192.168.50.0 0.0.0.255 area 0
+ network 192.168.99.0 0.0.0.255 area 0
 ```
 
 #### DSW2-BACKUP
@@ -486,6 +489,8 @@ router ospf 1
  network 192.168.20.0 0.0.0.255 area 0
  network 192.168.30.0 0.0.0.255 area 0
  network 192.168.40.0 0.0.0.255 area 0
+ network 192.168.50.0 0.0.0.255 area 0
+ network 192.168.99.0 0.0.0.255 area 0
 ```
 
 #### CR1
@@ -831,11 +836,10 @@ This section documents the SSH access restriction used for device management in 
 
 ### SSH Summary
 
-- SSH access to the network devices is limited to the IT subnet `192.168.30.0/24`.
+- SSH access to the management VLAN is limited to the IT subnet `192.168.30.0/24`.
 - A standard ACL named `SSH_IN` is applied inbound on the VTY lines to restrict which hosts can open SSH sessions.
 - For demo and testing, only `DSW1-MAIN` and `DSW2-BACKUP` are SSH-enabled devices.
 - The local SSH test credentials are username `it` and password `ccna`.
-- This keeps management access separated from the HR and Sales user VLANs.
 
 ### SSH Access ACL
 
@@ -862,17 +866,18 @@ line vty 5 15
 
 ### Demo and Testing Commands
 
-Use either SSH format below from a host in the IT VLAN:
+Use the SSH commands below from a host in the IT VLAN (192.168.30.0/24).  
+Management access is performed via the management VLAN (VLAN 99), where the distribution switches are reachable.
 
 ```text
-ssh -l it 192.168.30.252
-ssh -l it 192.168.30.253
-ssh it@192.168.30.252
-ssh it@192.168.30.253
+ssh -l it 192.168.99.252
+ssh -l it 192.168.99.253
+ssh it@192.168.99.252
+ssh it@192.168.99.253
 ```
 
-- `192.168.30.252` = `DSW1-MAIN`
-- `192.168.30.253` = `DSW2-BACKUP`
+- `192.168.99.252` = `DSW1-MAIN`
+- `192.168.99.253` = `DSW2-BACKUP`
 
 ### Verification Commands
 
@@ -1250,8 +1255,8 @@ This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection cont
 
 | Device | Protected VLAN(s) |
 |---|---|
-| `ASW1` | `10`, `30` |
-| `ASW2` | `20` |
+| `ASW1` | `10`, `20`, `30`, `50`, `100` |
+| `ASW2` | `10`, `20`, `30`, `50`, `100` |
 | `ASW3` | `40` |
 
 ### DHCP Snooping and DAI Configuration
@@ -1260,8 +1265,8 @@ This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection cont
 
 ```cisco
 ip dhcp snooping
-ip dhcp snooping vlan 10,30
-ip arp inspection vlan 10,30
+ip dhcp snooping vlan 10,20,30,40,50,100
+ip arp inspection vlan 10,20,30,40,50,100
 ip arp inspection validate src-mac dst-mac ip
 ```
 
@@ -1269,8 +1274,8 @@ ip arp inspection validate src-mac dst-mac ip
 
 ```cisco
 ip dhcp snooping
-ip dhcp snooping vlan 20
-ip arp inspection vlan 20
+ip dhcp snooping vlan 10,20,30,40,50,100
+ip arp inspection vlan 10,20,30,40,50,100
 ip arp inspection validate src-mac dst-mac ip
 ```
 
@@ -1278,8 +1283,8 @@ ip arp inspection validate src-mac dst-mac ip
 
 ```cisco
 ip dhcp snooping
-ip dhcp snooping vlan 40
-ip arp inspection vlan 40
+ip dhcp snooping vlan 10,20,30,40,50,100
+ip arp inspection vlan 10,20,30,40,50,100
 ip arp inspection validate src-mac dst-mac ip
 ```
 
