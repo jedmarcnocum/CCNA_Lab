@@ -1257,7 +1257,7 @@ This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection cont
 |---|---|
 | `ASW1` | `10`, `20`, `30`, `50`, `100` |
 | `ASW2` | `10`, `20`, `30`, `50`, `100` |
-| `ASW3` | `40` |
+| `ASW3` | `10`, `20`, `30`, `50`, `100` |
 
 ### DHCP Snooping and DAI Configuration
 
@@ -1265,8 +1265,8 @@ This section documents the Layer 2 DHCP snooping and Dynamic ARP Inspection cont
 
 ```cisco
 ip dhcp snooping
-ip dhcp snooping vlan 10,20,30,40,50,100
-ip arp inspection vlan 10,20,30,40,50,100
+ip dhcp snooping vlan 10,20,30,50,100
+ip arp inspection vlan 10,20,30,50,100
 ip arp inspection validate src-mac dst-mac ip
 ```
 
@@ -1274,8 +1274,8 @@ ip arp inspection validate src-mac dst-mac ip
 
 ```cisco
 ip dhcp snooping
-ip dhcp snooping vlan 10,20,30,40,50,100
-ip arp inspection vlan 10,20,30,40,50,100
+ip dhcp snooping vlan 10,20,30,50,100
+ip arp inspection vlan 10,20,30,50,100
 ip arp inspection validate src-mac dst-mac ip
 ```
 
@@ -1283,8 +1283,8 @@ ip arp inspection validate src-mac dst-mac ip
 
 ```cisco
 ip dhcp snooping
-ip dhcp snooping vlan 10,20,30,40,50,100
-ip arp inspection vlan 10,20,30,40,50,100
+ip dhcp snooping vlan 10,20,30,50,100
+ip arp inspection vlan 10,20,30,50,100
 ip arp inspection validate src-mac dst-mac ip
 ```
 
@@ -1342,18 +1342,19 @@ show running-config interface <interface>
 8. Create SVIs for inter-VLAN routing.
 9. Verify VLAN reachability and gateway connectivity.
 10. Add the voice VLAN on phone-facing access ports and verify IP phone registration.
-11. Configure router interfaces and upstream connectivity.
-12. Deploy OSPF and validate adjacency plus route exchange.
-13. Add EtherChannel for redundancy and higher throughput.
-14. Configure HSRP for resilient IPv4 default gateway services.
-15. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
-16. Configure SSH management access restrictions.
-17. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
-18. Apply ACL policy controls and validate source-based filtering behavior.
-19. Apply QoS trust, classification, marking, and priority queueing for voice traffic.
-20. Apply port security on user-facing access ports and verify secure MAC learning or manual secure MAC bindings.
-21. Configure DHCP snooping and Dynamic ARP Inspection trust boundaries plus access-port rate limits.
-22. Test failover, path selection, name resolution, monitoring, VoIP behavior, access-layer security behavior, DHCP snooping behavior, DAI behavior, and end-to-end connectivity.
+11. Configure wireless LAN support, including guest VLAN 50, WLC management VLAN 99, and AP registration.
+12. Configure router interfaces and upstream connectivity.
+13. Deploy OSPF and validate adjacency plus route exchange.
+14. Add EtherChannel for redundancy and higher throughput.
+15. Configure HSRP for resilient IPv4 default gateway services.
+16. Add centralized DNS, DHCP, and NTP services for client and infrastructure support.
+17. Configure SSH management access restrictions.
+18. Configure SNMP and syslog monitoring for infrastructure visibility and testing.
+19. Apply ACL policy controls and validate source-based filtering behavior.
+20. Apply QoS trust, classification, marking, and priority queueing for voice traffic.
+21. Apply port security on user-facing access ports and verify secure MAC learning or manual secure MAC bindings.
+22. Configure DHCP snooping and Dynamic ARP Inspection trust boundaries plus access-port rate limits.
+23. Test failover, path selection, name resolution, monitoring, VoIP behavior, access-layer security behavior, wireless LAN behavior, DHCP snooping behavior, DAI behavior, and end-to-end connectivity.
 
 ## Design Notes
 - The topology is intentionally **progressive**, so each lab builds on earlier concepts instead of starting from zero.
@@ -1411,6 +1412,24 @@ Prefix: /24
 Usable range: 192.168.40.1 - 192.168.40.254
 Broadcast address: 192.168.40.255
 Gateway: 192.168.40.254
+
+Guest VLAN 50
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.50.0/24
+Prefix: /24
+Usable range: 192.168.50.1 - 192.168.50.254
+Broadcast address: 192.168.50.255
+Gateway: 192.168.50.254
+
+WLC Management VLAN 99
+Host bits: 2^8 = 256
+Mask: 255.255.255.0
+Network address: 192.168.99.0/24
+Prefix: /24
+Usable range: 192.168.99.1 - 192.168.99.254
+Broadcast address: 192.168.99.255
+Gateway: 192.168.99.254
 
 Voice VLAN 100
 Host bits: 2^8 = 256
@@ -1496,10 +1515,6 @@ IPv6 pair: 2001:DB8:113:3::1 <-> 2001:DB8:113:3::2
 
 As this portfolio grows, the next features I plan to add to the current lab include:
 
-- LAN and WAN architecture features such as GRE tunnels
-- Virtualization, cloud, containers, and VRF concepts
-- Wireless fundamentals, architecture, security, and configuration
-- Network automation topics such as JSON, XML, YAML, REST APIs, SDN, Ansible, Puppet, Chef, and Terraform
 - A future rebuild of the lab in EVE-NG or GNS3 overcoming Packet Tracer's limitations.
 
 ---
