@@ -160,14 +160,14 @@ The HSRP active gateway placement is aligned with the spanning-tree root placeme
 | Backup multilayer switch SVI | `192.168.x.253` | `2001:DB8:x::253` |
 | Virtual default gateway | `192.168.x.254` | Not used in this Packet Tracer IPv6 lab |
 
-Replace `x` with the VLAN number such as `10`, `20`, `30`, `40`, or `100`.
+Replace `x` with the VLAN number such as `10`, `20`, `30`, `40`, `50`, `99`, or `100`.
 
 ### HSRP Active / Standby VLAN Split
 
 | VLAN Group | Active HSRP Device | Standby HSRP Device |
 |---|---|---|
-| `10`, `30`, `100` | `DSW1-MAIN` | `DSW2-BACKUP` |
-| `20`, `40` | `DSW2-BACKUP` | `DSW1-MAIN` |
+| `10`, `30`, `99`, `100` | `DSW1-MAIN` | `DSW2-BACKUP` |
+| `20`, `40`, `50` | `DSW2-BACKUP` | `DSW1-MAIN` |
 
 ### Example Configuration
 
@@ -189,6 +189,14 @@ interface vlan 30
 !
 interface vlan 40
  standby 40 ip 192.168.40.254
+!
+interface vlan 50
+ standby 50 ip 192.168.50.254
+!
+interface vlan 99
+ standby 99 ip 192.168.99.254
+ standby 99 priority 110
+ standby 99 preempt
 !
 interface vlan 100
  standby 100 ip 192.168.100.254
@@ -215,6 +223,14 @@ interface vlan 40
  standby 40 priority 110
  standby 40 preempt
 !
+interface vlan 50
+ standby 50 ip 192.168.50.254
+ standby 50 priority 110
+ standby 50 preempt
+!
+interface vlan 99
+ standby 99 ip 192.168.99.254
+!
 interface vlan 100
  standby 100 ip 192.168.100.254
 ```
@@ -230,15 +246,23 @@ show running-config | section interface Vlan
 
 ### Verification Screenshots
 
-The screenshots below show the HSRP state aligned with the spanning-tree load-balancing design: `DSW1-MAIN` is active for `VLANs 10, 30, and 100`, while `DSW2-BACKUP` is active for `VLANs 20 and 40`.
+The screenshots below show the HSRP state aligned with the spanning-tree load-balancing design: `DSW1-MAIN` is active for `VLANs 10, 30, 99, and 100`, while `DSW2-BACKUP` is active for `VLANs 20, 40, and 50`.
 
 #### DSW1-MAIN HSRP State
 
-![DSW1-MAIN standby brief output showing VLANs 10, 30, and 100 active while VLANs 20 and 40 remain standby](screenshots/fhrp-ds-main.png)
+![DSW1-MAIN standby brief output showing VLANs 10, 30, 99, and 100 active while VLANs 20, 40, and 50 remain standby](screenshots/fhrp-ds-main.png)
+
+#### DSW1-MAIN STP Root Alignment
+
+![DSW1-MAIN spanning-tree root status showing VLANs 10, 30, 99, and 100 preferred, aligned with HSRP active gateway roles](screenshots/hsrp-stp-aligned-dsmain.png)
 
 #### DSW2-BACKUP HSRP State
 
-![DSW2-BACKUP standby brief output showing VLANs 20 and 40 active while VLANs 10, 30, and 100 remain standby](screenshots/fhrp-ds-backup.png)
+![DSW2-BACKUP standby brief output showing VLANs 20, 40, and 50 active while VLANs 10, 30, 99, and 100 remain standby](screenshots/fhrp-ds-backup.png)
+
+#### DSW2-BACKUP STP Root Alignment
+
+![DSW2-BACKUP spanning-tree root status showing VLANs 20, 40, and 50 preferred, aligned with HSRP active gateway roles](screenshots/hsrp-stp-aligned-dsbackup.png)
 
 ### Distribution-to-Distribution Routed Link
 
@@ -979,6 +1003,8 @@ This section documents the wireless LAN (WLAN) integration using a Cisco Wireles
 ### Wireless Client Verification
 ![Guest wireless DHCP pool and Packet Tracer workaround screenshot showing WLC DHCP assignment for VLAN 50 while management traffic appears on VLAN 99](screenshots/vlan50-guests-dhcp-pool-wlc-workaround-for-pt-bug-devices_are_using_mgmt_99_network_as_ip.png)
 
+![Smartphone wireless connectivity test showing a client successfully associating through the wireless LAN controller](screenshots/smartphone-1-test-wificonnect-vlan10.png)
+
 ## Design Notes
 
 - VLAN 99 is used as the native VLAN to support WLC management traffic.
@@ -1018,6 +1044,7 @@ Wireless clients appear as `192.168.99.x` instead of their assigned VLAN subnet.
 
 - Only WLANs using WLC DHCP behave correctly  
 - Other WLANs may still appear as VLAN 99 (`192.168.99.0/24`)  
+- Wireless devices may connect to random APs in the topology rather than the nearest or strongest signal — this is a Packet Tracer simulation behavior and does not reflect real-world RSSI-based AP selection.
 
 ## ACL Design for Guest Wireless
 
