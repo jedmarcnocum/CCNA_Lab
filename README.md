@@ -23,10 +23,10 @@ A growing collection of Cisco Packet Tracer labs documenting my hands-on CCNA pr
 - [SNMP and Syslog Documentation](#snmp-and-syslog-documentation)
 - [SSH Documentation](#ssh-documentation)
 - [VoIP Documentation](#voip-documentation)
+- [Wireless LAN Documentation](#wireless-lan-documentation)
 - [QoS Documentation](#qos-documentation)
 - [Port Security Documentation](#port-security-documentation)
 - [DHCP Snooping and DAI Documentation](#dhcp-snooping-and-dai-documentation)
-- [Wireless LAN Documentation](#wireless-lan-documentation)
 - [Configuration Workflow](#configuration-workflow)
 - [Design Notes](#design-notes)
 - [Next Steps](#next-steps)
@@ -930,6 +930,125 @@ show interfaces switchport
 show ephone registered
 show telephony-service ephone
 ```
+
+## Wireless (WLC) Documentation
+
+This section documents the wireless LAN (WLAN) integration using a Cisco Wireless LAN Controller (WLC) and lightweight access points.
+
+### Design Summary
+
+- A Cisco WLC (`WLC1`) is connected to `DSW1-MAIN` via an 802.1Q trunk.
+- Lightweight APs register to the WLC using CAPWAP.
+- WLANs are mapped to VLANs through WLC dynamic interfaces.
+- Due to Packet Tracer limitations, wireless client behavior differs from real hardware and requires specific workarounds.
+
+## Wireless VLANs
+
+| VLAN | Purpose         | IPv4 Subnet     | Gateway        |
+|------|----------------|-----------------|----------------|
+| 50   | Guests Wireless | 192.168.50.0/24 | 192.168.50.254 |
+| 99   | WLC Management | 192.168.99.0/24 | 192.168.99.254 |
+
+## WLC Interface Configuration
+
+### Management Interface
+
+| Setting    | Value                                              |
+|------------|----------------------------------------------------|
+| VLAN       | 99                                                 |
+| IP Address | 192.168.99.1                                       |
+| Purpose    | WLC management, CAPWAP, and DHCP (guest workaround)|
+
+### WLC Dynamic Interfaces
+- insert screenshot here
+
+### WLC WLANs
+- insert screenshot here
+  
+### LWAPs
+- insert screenshot here
+
+## Design Notes
+
+- VLAN 99 is used as the native VLAN to support WLC management traffic.
+- Packet Tracer WLC sends management traffic untagged, so the native VLAN must match VLAN 99.
+## DHCP Design (Wireless)
+
+### Guest WLAN (VLAN 50)
+
+- DHCP is provided by the WLC instead of the centralized DHCP server.
+- DHCP server is set to `192.168.99.1` (WLC management IP).
+- This ensures wireless clients receive correct addressing in the `192.168.50.0/24` subnet.
+
+
+### Other WLANs
+
+- Continue using centralized DHCP (`192.168.40.4`)
+- Still affected by Packet Tracer wireless limitations
+
+
+## Packet Tracer Limitation and Workaround
+
+Packet Tracer has a known issue where wireless client traffic appears to originate from the WLC management VLAN instead of the assigned VLAN, similar to JITL's lab https://youtu.be/Il8ev78fcqw?t=923.
+
+
+### Observed Behavior
+
+Wireless clients appear as `192.168.99.x` instead of their assigned VLAN subnet.
+
+
+### Workaround Implemented
+
+- Guest WLAN uses WLC internal DHCP  
+- DHCP server is set to `192.168.99.1`  
+- This forces correct subnet assignment (`192.168.50.0/24`)  
+
+### Limitation Scope
+
+- Only WLANs using WLC DHCP behave correctly  
+- Other WLANs may still appear as VLAN 99 (`192.168.99.0/24`)  
+
+## ACL Design for Guest Wireless
+
+With the workaround:
+
+- Guest clients correctly use `192.168.50.0/24`  
+- Basic isolation ACLs can be applied on distribution switches normally on VLAN 50:
+  
+```cisco
+ip access-list extended GUEST_BLOCK
+ deny ip 192.168.50.0 0.0.0.255 192.168.0.0 0.0.255.255
+ permit ip any any
+
+interface vlan 50
+ ip access-group GUEST_BLOCK in
+```
+
+### Policy Intent
+
+- Deny access to internal VLANs (10,20,30,40)  
+- Allow internet access  
+
+## OSPF Requirement for Wireless
+
+```cisco
+router ospf 1
+ network 192.168.99.0 0.0.0.255 area 0
+```
+
+### Reason
+
+Due to Packet Tracer behavior, wireless traffic may still source from VLAN 99.  
+Without this route, return traffic follows the default route and loops toward the internet.
+
+## Key Takeaways
+
+- Packet Tracer WLC behavior differs from real hardware  
+- Native VLAN must match WLC management VLAN  
+- DHCP can be offloaded to WLC as a workaround  
+- OSPF must include all active VLANs (including management)  
+- Wireless ACL enforcement depends on correct IP assignment  
+
 
 ## QoS Documentation
 
