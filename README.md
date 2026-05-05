@@ -52,6 +52,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 - Extended ACL policy enforcement for service-based access control
 - Centralized DNS and DHCP services for user and voice VLANs
 - Centralized NTP for consistent device timestamps across routers and switches
+- Wireless LAN integration with a Cisco WLC, guest VLAN, and Packet Tracer wireless workaround
 - Basic SNMP and syslog monitoring validation in Packet Tracer
 - Restricted SSH management access from the IT VLAN
 - VoIP phone access ports with a separate voice VLAN
@@ -61,7 +62,7 @@ Instead of treating each topic as a completely separate project, I use an **evol
 
 ## Lab Files
 
-These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the repository is `labs/Core Routers Redundancy.pkt`.
+These Packet Tracer labs are stored in `labs/` and show the progression of the topology and the topics covered. The latest lab file in the repository is `labs/Wireless LAN.pkt`.
 
 | Lab File | Main Focus |
 |---|---|
@@ -83,12 +84,13 @@ These Packet Tracer labs are stored in `labs/` and show the progression of the t
 | `labs/Port Security.pkt` | Access-layer security lab with sticky learning, manual secure MACs, and restrict-mode violations |
 | `labs/DHCP Snooping.pkt` | Layer 2 security lab with DHCP snooping, rogue DHCP blocking, and rate-limit testing |
 | `labs/ARP Inspection.pkt` | Latest Layer 2 security lab with Dynamic ARP Inspection added on top of DHCP snooping validation |
+| `labs/Wireless LAN.pkt` | Wireless LAN controller, APs, and Guest wireless VLAN |
 
 ## Topology Snapshot
 
 The current lab design includes:
 
-- Five VLANs: HR, Sales, IT, Services, and Voice
+- Seven VLANs: HR, Sales, IT, Services, Guest Wireless, Voice, and WLC Management
 - Two distribution / multilayer switches acting as primary and backup gateways
 - An EtherChannel bundle between `DSW1-MAIN` and `DSW2-BACKUP` for inter-switch redundancy
 - Redundant uplinks between access and distribution layers
@@ -97,6 +99,8 @@ The current lab design includes:
 - Dynamic NAT overload (PAT) on `EDGE` for inside local addresses reaching outside networks
 - Centralized services in `VLAN 40`, including file, admin (w/DNS, NTP, syslog), web, and DHCP servers
 - DHCP scope delivery for data VLANs `10`, `20`, and `30`, plus the voice VLAN `100`
+- Guest wireless in `VLAN 50` with **WLC-managed DHCP** and wireless client testing
+- A dedicated WLC management VLAN `99` for controller management, CAPWAP, and DHCP proxy behavior
 - Cisco IP phones added at the access layer with a dedicated `VLAN 100` voice segment
 - QoS policy testing with DSCP marking at `ASW1`, DSCP trust at `DSW1-MAIN` and `DSW2-BACKUP`, and egress priority queueing on routed devices such as `CR1`, `CR2`, and `EDGE`
 - Port security on access ports, using sticky learning on `ASW1` and `ASW2` plus manually configured secure MAC addresses on `ASW3`
@@ -115,6 +119,8 @@ The current lab design includes:
 | 20 | Sales | `192.168.20.0/24` | `192.168.20.254` | `2001:DB8:20::/64` | `2001:DB8:20::252` (`DSW1-MAIN`), `2001:DB8:20::253` (`DSW2-BACKUP`) |
 | 30 | IT | `192.168.30.0/24` | `192.168.30.254` | `2001:DB8:30::/64` | `2001:DB8:30::252` (`DSW1-MAIN`), `2001:DB8:30::253` (`DSW2-BACKUP`) |
 | 40 | Services | `192.168.40.0/24` | `192.168.40.254` | `2001:DB8:40::/64` | `2001:DB8:40::252` (`DSW1-MAIN`), `2001:DB8:40::253` (`DSW2-BACKUP`) |
+| 50 | Guests Wireless | `192.168.50.0/24` | `192.168.50.254` | Not configured in this lab | Not configured in this lab |
+| 99 | WLC Management | `192.168.99.0/24` | `192.168.99.254` | Not configured in this lab | Not configured in this lab |
 | 100 | Voice | `192.168.100.0/24` | `192.168.100.254` | Not configured in this lab | Not configured in this lab |
 
 ### Example End-Host Addressing
@@ -125,6 +131,7 @@ The current lab design includes:
 | 20 | `192.168.20.1` | `2001:DB8:20::1` |
 | 30 | `192.168.30.1` | `2001:DB8:30::1` |
 | 40 | `192.168.40.1` | `2001:DB8:40::1` |
+| 50 | `192.168.50.1` | Not used |
 | 100 | `192.168.100.1` | Not used |
 
 ### Services VLAN Infrastructure
@@ -931,7 +938,7 @@ show ephone registered
 show telephony-service ephone
 ```
 
-## Wireless (WLC) Documentation
+## Wireless LAN Documentation
 
 This section documents the wireless LAN (WLAN) integration using a Cisco Wireless LAN Controller (WLC) and lightweight access points.
 
@@ -940,6 +947,7 @@ This section documents the wireless LAN (WLAN) integration using a Cisco Wireles
 - A Cisco WLC (`WLC1`) is connected to `DSW1-MAIN` via an 802.1Q trunk.
 - Lightweight APs register to the WLC using CAPWAP.
 - WLANs are mapped to VLANs through WLC dynamic interfaces.
+- Guest wireless is carried in `VLAN 50` while the WLC management plane uses `VLAN 99`.
 - Due to Packet Tracer limitations, wireless client behavior differs from real hardware and requires specific workarounds.
 
 ## Wireless VLANs
@@ -960,13 +968,16 @@ This section documents the wireless LAN (WLAN) integration using a Cisco Wireles
 | Purpose    | WLC management, CAPWAP, and DHCP (guest workaround)|
 
 ### WLC Dynamic Interfaces
-- insert screenshot here
+![WLC dynamic interfaces showing VLAN mapping for guest and management dynamic interfaces](screenshots/wlc-dynamic-interfaces.png)
 
 ### WLC WLANs
-- insert screenshot here
-  
+![WLC WLAN configuration showing guest SSID mapping and assigned VLANs](screenshots/wlc-wlans.png)
+
 ### LWAPs
-- insert screenshot here
+![Lightweight AP registration page showing APs successfully joined to WLC1](screenshots/wlc-aps.png)
+
+### Wireless Client Verification
+![Guest wireless DHCP pool and Packet Tracer workaround screenshot showing WLC DHCP assignment for VLAN 50 while management traffic appears on VLAN 99](screenshots/vlan50-guests-dhcp-pool-wlc-workaround-for-pt-bug-devices_are_using_mgmt_99_network_as_ip.png)
 
 ## Design Notes
 
